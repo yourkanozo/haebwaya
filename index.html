@@ -149,7 +149,7 @@
     transition: rotate .2s ease-out;
   }
   .face {
-    position: absolute; inset: 0;
+    position: absolute; inset: -2px;             /* 문틀 밑으로 살짝 겹쳐 틈 방지 */
     background: url(images/door_leaf.jpg?v=2) center / 100% 100% no-repeat;
     backface-visibility: hidden;
     filter: brightness(var(--shade));
