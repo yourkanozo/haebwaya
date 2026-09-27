@@ -132,7 +132,7 @@
     position: absolute; inset: 0;
     border-style: solid;
     border-width: var(--ft) var(--fr) 0 var(--fl);
-    border-image: url(images/door_frame.png) 50 52 0 53 stretch;
+    border-image: url(images/door_frame.png?v=2) 50 52 0 53 stretch;
     pointer-events: none;
   }
   .opening {
@@ -150,7 +150,7 @@
   }
   .face {
     position: absolute; inset: 0;
-    background: url(images/door_leaf.jpg) center / 100% 100% no-repeat;
+    background: url(images/door_leaf.jpg?v=2) center / 100% 100% no-repeat;
     backface-visibility: hidden;
     filter: brightness(var(--shade));
     transition: filter .2s ease-out;
@@ -165,7 +165,7 @@
   .face.back::before {
     content: '';
     position: absolute; inset: 0;
-    background: url(images/door_leaf.jpg) center / 100% 100% no-repeat;
+    background: url(images/door_leaf.jpg?v=2) center / 100% 100% no-repeat;
     transform: scaleX(-1);
   }
   /* 열린 문짝을 누르면 닫힘 */
