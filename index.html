@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>해봐야 아는 것들</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root {
+    --cols: 12;
+    --cell: calc(100vw / var(--cols));
+    --bg: #000;
+    --fg: #fff;
+    --wipe: 0.45s;
+    /* 1920px 화면 기준 값 → 화면 너비에 비례해 스케일 */
+    --u: calc(100vw / 1920);
+    --fs-fixed: calc(var(--u) * 30);   /* 고정 텍스트 30 (20 × 1.5) */
+    --fs-body:  calc(var(--u) * 21);   /* 개요 텍스트 21 (14 × 1.5) */
+    --lh-body:  calc(var(--u) * 30);   /* 개요 행간 30 (20 × 1.5) */
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--fg); }
+  body {
+    font-family: "Pretendard", -apple-system, sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* ───────── 로딩 화면 ───────── */
+  .loader {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    color: var(--fg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: var(--fs-body);
+    z-index: 1000;
+  }
+  body.loading { overflow: hidden; }
+
+  /* ───────── 고정 텍스트 ───────── */
+  .header {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: var(--cell);
+    display: grid;
+    grid-template-columns: repeat(var(--cols), var(--cell));
+    z-index: 100;
+    pointer-events: none;
+  }
+  .header > * { display: flex; align-items: center; justify-content: center; }
+  .header button, .header a {
+    pointer-events: auto;
+    background: none;
+    color: var(--fg);
+    border: 0;
+    font: inherit;
+    font-size: var(--fs-fixed);
+    line-height: 1;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .header .name { grid-column: 1 / span 2; }
+  .header .menu-article { grid-column: 4; }
+  .header .menu-explore { grid-column: 5; }
+
+  .slot { background: var(--bg); grid-row: 1; z-index: 1; }
+
+  /* ───────── 그리드 ───────── */
+  .grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(var(--cols), var(--cell));
+    grid-auto-rows: var(--cell);
+  }
+  .cell {
+    position: relative;
+    z-index: 1;
+    contain: layout paint;
+    background-color: #111;
+    background-image: var(--img);
+    background-size: cover;
+    background-position: center;
+    clip-path: inset(0 0 0 0);
+    transition: clip-path var(--wipe) cubic-bezier(.7, 0, .3, 1);
+  }
+  .cell.cover.gone { clip-path: inset(0 0 0 100%); pointer-events: none; }
+  .cell.cover.instant { transition: none; }
+
+  /* ───────── 개요 텍스트 ───────── */
+  .text, .hole {
+    z-index: 0;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: var(--fs-body);
+    line-height: var(--lh-body);
+    letter-spacing: 0.01em;
+    word-spacing: 0.15em;
+  }
+  .text p, .hole p { text-align: left; white-space: nowrap; }
+  .hole .copy p + p { margin-top: var(--lh-body); }   /* 문장 묶음 사이 한 줄 */
+
+  /* ───────── 문 (실사 사진, 두께 없는 한 장) ───────── */
+  .door-wrap {
+    /* 문 안쪽(문짝 자리)이 정확히 그리드 칸에 맞음. 문틀은 그 바깥으로 나옴 */
+    --k:  calc(var(--cell) / 200);
+    --dw: calc(var(--cell) * var(--w));
+    --dh: calc(var(--cell) * var(--h));
+    --s:  calc(var(--dw) / 790);                 /* 사진 1px → 화면 크기 */
+    --fl: calc(var(--s) * 103);                  /* 문틀 왼쪽 */
+    --fr: calc(var(--s) * 112);                  /* 문틀 오른쪽 */
+    --ft: calc(var(--s) * 91);                   /* 문틀 위 (앵글 포함) */
+    --rot: 0deg;
+    --shade: 1;
+
+    position: absolute;
+    left: calc(var(--cell) * (var(--col) - 1) - var(--fl));
+    top:  calc(var(--cell) * (var(--row) - 1) - var(--ft));
+    width:  calc(var(--dw) + var(--fl) + var(--fr));
+    height: calc(var(--dh) + var(--ft));
+    z-index: 50;
+    perspective: calc(var(--dw) * 4);
+    perspective-origin: 50% 45%;
+    transition: opacity .45s ease;
+  }
+  .door-wrap * { box-sizing: border-box; }
+  .scene, .opening, .door3d { transform-style: preserve-3d; }
+  .scene { position: absolute; inset: 0; }
+
+  /* 문틀: 사진에서 잘라낸 틀을 border-image로 늘림 */
+  .casing {
+    position: absolute; inset: 0;
+    border-style: solid;
+    border-width: var(--ft) var(--fr) 0 var(--fl);
+    border-image: url(images/door_frame.png) 91 112 0 103 stretch;
+    pointer-events: none;
+  }
+  .opening {
+    position: absolute;
+    left: var(--fl); top: var(--ft);
+    width: var(--dw); height: var(--dh);
+  }
+
+  /* 문짝: 두께 0, 왼쪽 경첩 기준 회전 */
+  .door3d {
+    position: absolute; inset: 0;
+    transform-origin: left center;
+    rotate: y var(--rot);
+    transition: rotate .2s ease-out;
+  }
+  .face {
+    position: absolute; inset: 0;
+    background: url(images/door_leaf.jpg) center 40% / 100% 115% no-repeat;
+    backface-visibility: hidden;
+    filter: brightness(var(--shade));
+    transition: filter .2s ease-out;
+  }
+  /* 뒷면: 같은 사진을 어둡게 → 종이 뒷면 */
+  .face.back {
+    transform: rotateY(180deg);
+    background: none;
+    filter: brightness(calc(var(--shade) * .55)) saturate(.6);
+  }
+  /* 뒷면 사진 좌우반전: 손잡이가 경첩 반대쪽(바깥쪽)에 오도록 */
+  .face.back::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: url(images/door_leaf.jpg) center 40% / 100% 115% no-repeat;
+    transform: scaleX(-1);
+  }
+  /* 열린 문짝을 누르면 닫힘 */
+  .door-wrap.open .face { cursor: pointer; }
+
+  /* 당기시오 표지판 (CSS 제작) — 사진 속 손잡이 위 */
+  .sign {
+    position: absolute;
+    right: 9%;
+    top: calc(50% - var(--k) * 190);
+    width: calc(var(--k) * 48);
+    padding: calc(var(--k) * 9) 0 calc(var(--k) * 8);
+    display: flex; flex-direction: column; align-items: center;
+    background: #f6f6f4;
+    color: #111;
+    box-shadow:
+      0 calc(var(--k) * 1) calc(var(--k) * 3) rgba(0,0,0,.3),
+      inset 0 0 0 calc(var(--k) * .8) rgba(0,0,0,.06);
+  }
+  .sign .ko {
+    display: flex; flex-direction: column; align-items: center;
+    font-weight: 700;
+    font-size: calc(var(--k) * 27);
+    line-height: 1.12;
+  }
+  .sign .en {
+    margin-top: calc(var(--k) * 6);
+    width: 80%;
+    padding: calc(var(--k) * 3) 0 calc(var(--k) * 2);
+    border-top: calc(var(--k) * 1.2) solid #222;
+    border-bottom: calc(var(--k) * 1.2) solid #222;
+    font-family: "Times New Roman", Times, serif;
+    font-size: calc(var(--k) * 11.5);
+    line-height: 1;
+    text-align: center;
+  }
+
+  /* 클릭 영역: 손잡이 쪽 = 당기기, 나머지 문짝 = 밀기 */
+  .zones {
+    position: absolute;
+    left: var(--fl); top: var(--ft);
+    width: var(--dw); height: var(--dh);
+  }
+  .zone { position: absolute; top: 0; bottom: 0; background: none; border: 0; padding: 0; touch-action: none; }
+  .zone-push { left: 0;  width: 70%; cursor: e-resize; }
+  .zone-pull { right: 0; width: 30%; cursor: grab; }
+  .door-wrap.dragging .zone-pull { cursor: grabbing; }
+
+  /* 회전 속도: 드래그 중엔 즉시 따라감, 손 떼면 스냅 */
+  .door-wrap.dragging .door3d { transition: none; }
+  .door-wrap.dragging .face   { transition: none; }
+  /* 무거운 문: 천천히 가속했다 천천히 멈춤 */
+  .door-wrap.snapping .door3d { transition: rotate 1.4s cubic-bezier(.45, .05, .25, 1); }
+  .door-wrap.snapping .face   { transition: filter 1.4s cubic-bezier(.45, .05, .25, 1); }
+
+  /* 밀었을 때: 걸쇠에 걸려 덜컹 (아주 작게) */
+  @keyframes rattle {
+    0%   { rotate: y 1.6deg; }
+    14%  { rotate: y 0deg; }
+    28%  { rotate: y 1.1deg; }
+    42%  { rotate: y 0deg; }
+    56%  { rotate: y 0.6deg; }
+    70%  { rotate: y 0deg; }
+    85%  { rotate: y 0.25deg; }
+    100% { rotate: y 0deg; }
+  }
+  .door3d.rattle { animation: rattle .42s linear; }
+  @keyframes flash { 0%, 100% { filter: none; } 50% { filter: invert(1); } }
+  .sign.flash { animation: flash .6s steps(1) 2; }   /* 0.3초씩 반전 → 두 번 깜빡 */
+
+  .door-wrap.open .zones { pointer-events: none; }   /* 열린 뒤엔 문 안쪽 텍스트를 가리지 않음 */
+
+  .door-label {
+    position: fixed; z-index: 200;
+    pointer-events: none;
+    background: #fff; color: #000;
+    font-size: var(--fs-body); line-height: 1;
+    padding: calc(var(--u) * 5) calc(var(--u) * 9);
+    transform: translate(14px, 14px);
+    display: none;
+  }
+  .door-label.on { display: block; }
+
+  .sentinel { height: 1px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root { --wipe: 0s; }
+    .door-wrap .door3d, .door-wrap.snapping .door3d { transition: none; }
+    .door3d.rattle, .sign.flash { animation: none; }
+  }
+</style>
+</head>
+<body class="loading">
+
+<div class="loader" id="loader">불러오는 중</div>
+
+<header class="header">
+  <div class="name"><button type="button" id="projectName">해봐야 아는 것들</button></div>
+  <div class="menu-article"><a href="#">아티클</a></div>
+  <div class="menu-explore"><a href="#">탐색</a></div>
+</header>
+
+<main class="grid" id="grid"></main>
+<div class="door-label" id="doorLabel"></div>
+<div class="sentinel" id="sentinel"></div>
+
+<template id="doorTpl">
+  <div class="door-wrap">
+    <div class="scene">
+      <div class="opening">
+        <div class="door3d">
+          <div class="face front">
+            <div class="sign" aria-label="당기시오 PULL">
+              <div class="ko"><span>당</span><span>기</span><span>시</span><span>오</span></div>
+              <div class="en">PULL</div>
+            </div>
+          </div>
+          <div class="face back"></div>
+        </div>
+      </div>
+      <div class="casing"></div>
+    </div>
+    <div class="zones">
+      <button class="zone zone-push" type="button" data-mode="push" aria-label="문 밀기"></button>
+      <button class="zone zone-pull" type="button" data-mode="pull" aria-label="문 당기기"></button>
+    </div>
+  </div>
+</template>
+
+<script>
+/* ───────── 버전 선택 (1 / 2 / 3) ───────── */
+const VERSION = 2;
+
+/* ───────── 설정 ───────── */
+const CONFIG = {
+  imageCount: 64,                                          // 이미지 늘어나면 이 숫자만 수정
+  path: n => `images/A${String(n).padStart(4, '0')}.png`,  // 폴더명 다르면 'images/' 수정
+  cols: 12,
+  batchRows: 8,
+  stagger: 90,
+};
+
+/* 개요 문장 */
+const SENTENCES = [
+  '당겨야 열리는 문을<br>굳이 밀어서 열 때가 있다.',
+  '그런데 이런 경험을<br>더는 공유할 수 없을지도 모른다.',
+  '문의 손잡이는 자동문 버튼으로,<br>자동차 대시보드의 수십 개 버튼은<br>터치스크린 하나로,<br>열쇠는 얼굴로 변해가고 있기 때문이다.<br>그리고 그 감각들의 종류도 점점 줄어간다.',
+  '‘해봐야 아는 것들’은 그 기록을 남기는<br>오픈 아카이브 프로젝트다.',
+  '이 프로젝트에서는<br>인간의 동작과 대응하는 모든 조작 접점을<br>인터페이스로 정의하고 수집한다.',
+  '그리고 수집된 인터페이스는 동사와 분야라는<br>두 가지 메타데이터 축으로 분류된다.',
+];
+
+/* 흩어진 배치 (버전 1에서 사용) — row(행), col(시작 열), span(차지 칸 수) */
+const SCATTERED = [
+  { row: 2, col: 2,  span: 2, s: 0 },
+  { row: 3, col: 3,  span: 2, s: 1 },
+  { row: 4, col: 4,  span: 3, s: 2 },
+  { row: 4, col: 8,  span: 2, s: 3 },
+  { row: 5, col: 9,  span: 2, s: 4 },
+  { row: 6, col: 10, span: 2, s: 5 },
+];
+
+/* 문 배치 — col/row: 문 안쪽 왼쪽 위 칸, w/h: 가로·세로 칸 수
+   hole: true  → 문 안쪽이 검은 칸이 되고, texts의 문장을 담음
+   hole: false → 문 뒤로 그리드가 그대로 보임 (버전 1) */
+const LAYOUTS = {
+  1: { scattered: true,
+       doors: [ { col: 2, row: 2, w: 2, h: 3, hole: false } ] },
+  /* col 5.5 = 화면 정중앙 (3칸 너비라 반 칸 어긋나게 배치) */
+  2: { doors: [ { col: 5.5, row: 3, w: 3, h: 5, hole: true, texts: [0, 1, 2, 3, 4, 5] } ] },
+  3: { doors: [ { col: 5, row: 2, w: 4, h: 5, hole: true, texts: [0, 1, 2, 3, 4, 5] } ] },
+};
+const LAYOUT = LAYOUTS[VERSION];
+
+const grid = document.getElementById('grid');
+let rowCount = 0;
+const covers = [];
+
+/* ───────── 이미지 ───────── */
+function loadImage(src) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => { console.warn('이미지 못 찾음:', src); resolve(null); };
+    img.src = src;
+  });
+}
+
+async function prepareImages() {
+  const imgs = await Promise.all(
+    Array.from({ length: CONFIG.imageCount }, (_, i) => loadImage(CONFIG.path(i + 1)))
+  );
+  let css = '';
+  imgs.forEach((img, i) => {
+    if (!img) return;
+    css += `.im-${i + 1}{--img:url(${img.src});}\n`;
+  });
+  const style = document.createElement('style');
+  style.textContent = css;
+  document.head.appendChild(style);
+}
+
+/* ───────── 그리드 ───────── */
+const SLOTS = [ { col: 1, span: 2 }, { col: 4, span: 1 }, { col: 5, span: 1 } ];
+
+const inRect = (r, c, d) => r >= d.row && r < d.row + d.h && c >= d.col && c < d.col + d.w;
+const isSlot = (r, c) => r === 1 && SLOTS.some(s => c >= s.col && c < s.col + s.span);
+/* 문 안쪽이 칸에 딱 맞을 때만 그 칸을 비움. 반 칸 어긋난 문은 검은 판이 칸 위를 덮음 */
+const isHole = (r, c) => LAYOUT.doors.some(d => d.hole && Number.isInteger(d.col) && inRect(r, c, d));
+const isCovering = (r, c) => LAYOUT.scattered &&
+  SCATTERED.some(t => t.row === r && c >= t.col && c < t.col + t.span);
+
+function placeSlots() {
+  SLOTS.forEach(s => {
+    const el = document.createElement('div');
+    el.className = 'slot';
+    el.style.gridColumn = `${s.col} / span ${s.span}`;
+    grid.appendChild(el);
+  });
+}
+
+function makeCell(r, c) {
+  const index = (r - 1) * CONFIG.cols + (c - 1);
+  const n = (index % CONFIG.imageCount) + 1;
+  const cell = document.createElement('div');
+  cell.className = `cell im-${n}`;
+  cell.style.gridRow = r;
+  cell.style.gridColumn = c;
+  if (isCovering(r, c)) {
+    cell.classList.add('cover');
+    covers.push({ el: cell, r, c });
+  }
+  return cell;
+}
+
+function addRows(count) {
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < count; i++) {
+    rowCount++;
+    for (let c = 1; c <= CONFIG.cols; c++) {
+      if (isSlot(rowCount, c) || isHole(rowCount, c)) continue;
+      frag.appendChild(makeCell(rowCount, c));
+    }
+  }
+  grid.appendChild(frag);
+}
+
+/* 흩어진 개요 텍스트 (버전 1) */
+function placeScattered() {
+  SCATTERED.forEach(t => {
+    const el = document.createElement('div');
+    el.className = 'text';
+    el.style.gridRow = t.row;
+    el.style.gridColumn = `${t.col} / span ${t.span}`;
+    el.innerHTML = `<p>${SENTENCES[t.s]}</p>`;
+    grid.appendChild(el);
+  });
+}
+
+/* 문 안쪽 검은 칸 + 텍스트박스 (버전 2, 3) */
+function placeHoles() {
+  LAYOUT.doors.filter(d => d.hole).forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'hole';
+    Object.assign(el.style, {
+      position: 'absolute', zIndex: 2,
+      left:   `calc(var(--cell) * ${d.col - 1})`,
+      top:    `calc(var(--cell) * ${d.row - 1})`,
+      width:  `calc(var(--cell) * ${d.w})`,
+      height: `calc(var(--cell) * ${d.h})`,
+    });
+    el.innerHTML = `<div class="copy">${d.texts.map(i => `<p>${SENTENCES[i]}</p>`).join('')}</div>`;
+    grid.appendChild(el);
+  });
+}
+
+/* ───────── 버전 1: 문 밖 텍스트의 순차 공개 ───────── */
+let revealed = false;
+let cascade = [];
+
+function runCascade(show) {
+  revealed = show;
+  const order = show ? cascade : [...cascade].reverse();
+  order.forEach((item, i) => {
+    item.el.style.transitionDelay = `${i * CONFIG.stagger}ms`;
+    item.el.classList.toggle('gone', show);
+  });
+}
+
+/* ───────── 문 ───────── */
+const label = document.getElementById('doorLabel');
+const doors = [];
+
+function buildDoor(d) {
+  const wrap = document.getElementById('doorTpl').content.firstElementChild.cloneNode(true);
+  wrap.style.setProperty('--col', d.col);
+  wrap.style.setProperty('--row', d.row);
+  wrap.style.setProperty('--w', d.w);
+  wrap.style.setProperty('--h', d.h);
+  grid.appendChild(wrap);
+
+  const door3d = wrap.querySelector('.door3d');
+  const sign = wrap.querySelector('.sign');
+  const LABELS = { push: '밀기 →', pull: '← 당기기' };
+  const state = { wrap, open: false };
+
+  const OPEN_DEG = -105;     // 완전히 열린 각도
+  const OPEN_AT  = -30;      // 이만큼 당기고 놓으면 활짝 열림, 덜 당기면 도로 닫힘
+  const PUSH_MAX = 2;        // 밀 때 최대로 들어가는 각도 (걸쇠에 걸림)
+  const PULL_GAIN = 100;     // 문 너비만큼 끌었을 때 열리는 각도 (작을수록 무거움)
+  const PULL_LAG  = 0.06;    // 매 프레임 손을 따라가는 비율 (작을수록 굼뜨게 따라옴)
+
+  /* 당길 때 문이 손을 바로 따라오지 않고 무겁게 뒤따라옴 */
+  let cur = 0, target = 0, raf = null;
+  const follow = () => {
+    cur += (target - cur) * PULL_LAG;
+    setRot(cur);
+    raf = Math.abs(target - cur) > 0.05 ? requestAnimationFrame(follow) : null;
+  };
+  const pullTo = deg => {
+    target = deg;
+    if (!raf) raf = requestAnimationFrame(follow);
+  };
+  const stopFollow = () => { cancelAnimationFrame(raf); raf = null; };
+
+  /* 각도 → 회전 + 플랫 셰이딩(로우폴리처럼 면 밝기만 바뀜) */
+  const setRot = deg => {
+    wrap.style.setProperty('--rot', deg + 'deg');
+    const shade = deg > 0 ? 1 - deg * 0.06 : 1 - Math.abs(deg) / 350;
+    wrap.style.setProperty('--shade', shade.toFixed(3));
+  };
+  const snapTo = deg => {
+    wrap.classList.remove('dragging');
+    wrap.classList.add('snapping');
+    setRot(deg);
+    clearTimeout(state.snapTimer);
+    state.snapTimer = setTimeout(() => wrap.classList.remove('snapping'), 1450);
+  };
+
+  const showLabel = text => {
+    label.textContent = text || '';
+    label.classList.toggle('on', !!text);
+  };
+
+  const rattle = () => {
+    door3d.classList.remove('rattle');
+    sign.classList.remove('flash');
+    void door3d.offsetWidth;
+    door3d.classList.add('rattle');
+    sign.classList.add('flash');
+  };
+
+  const openDoor = () => {
+    state.open = true;
+    wrap.classList.add('open');
+    showLabel(null);
+    snapTo(OPEN_DEG);
+    if (LAYOUT.scattered) setTimeout(() => runCascade(true), 450);
+  };
+
+  state.close = () => {
+    if (!state.open) return;
+    state.open = false;
+    wrap.classList.remove('open');
+    snapTo(0);
+  };
+
+  /* 호버: 라벨만 */
+  wrap.querySelectorAll('.zone').forEach(zone => {
+    zone.addEventListener('pointerenter', () => { if (!state.drag) showLabel(LABELS[zone.dataset.mode]); });
+    zone.addEventListener('focus',        () => showLabel(LABELS[zone.dataset.mode]));
+    zone.addEventListener('blur',         () => showLabel(null));
+  });
+  wrap.addEventListener('pointerleave', () => { if (!state.drag) showLabel(null); });
+  wrap.addEventListener('pointermove', e => {
+    label.style.left = e.clientX + 'px';
+    label.style.top  = e.clientY + 'px';
+    if (state.open && !state.closeDrag) showLabel(e.target.closest('.face') ? '닫기 →' : null);
+  });
+
+  /* ───── 드래그 ─────
+     손잡이 쪽을 잡고 왼쪽으로 → 당겨짐 (끌어당긴 만큼 열림)
+     문짝을 잡고 오른쪽으로   → 밀림 (걸쇠에 걸려 살짝만 들어가다 덜컹) */
+  wrap.querySelectorAll('.zone').forEach(zone => {
+    zone.addEventListener('pointerdown', e => {
+      if (state.open) return;
+      zone.setPointerCapture(e.pointerId);
+      state.drag = { zone: zone.dataset.mode, x0: e.clientX, dx: 0, w: wrap.querySelector('.opening').offsetWidth };
+      cur = target = 0;
+      wrap.classList.remove('snapping');
+      wrap.classList.add('dragging');
+    });
+
+    zone.addEventListener('pointermove', e => {
+      const d = state.drag;
+      if (!d) return;
+      d.dx = e.clientX - d.x0;
+      if (d.zone === 'pull' && d.dx < 0) {
+        // 당기기: 끈 거리만큼, 무겁게 뒤따라옴
+        pullTo(Math.max(OPEN_DEG, (d.dx / d.w) * PULL_GAIN));
+      } else if (d.dx > 0) {
+        stopFollow();
+        // 밀기: 저항이 커서 거의 안 들어감
+        setRot(PUSH_MAX * (1 - Math.exp(-d.dx / 60)));
+      } else {
+        setRot(0);
+      }
+    });
+
+    const end = () => {
+      const d = state.drag;
+      if (!d) return;
+      state.drag = null;
+      stopFollow();
+      const moved = Math.abs(d.dx) > 4;
+      if (d.zone === 'pull' && d.dx < 0 && moved) {
+        const deg = Math.max(OPEN_DEG, (d.dx / d.w) * PULL_GAIN);
+        if (deg <= OPEN_AT) openDoor(); else snapTo(0);
+      } else if (d.dx > 0 && moved) {
+        wrap.classList.remove('dragging');
+        setRot(0);
+        rattle();                                     // 밀었다 → 걸쇠에 걸려 덜컹
+      } else if (!moved) {
+        if (d.zone === 'pull') {                      // 손잡이 클릭만 해도 당겨서 열림
+          openDoor();
+        } else {
+          wrap.classList.remove('dragging');
+          rattle();                                   // 문짝 클릭 = 민 것으로 간주
+        }
+      } else {
+        snapTo(0);
+      }
+    };
+    zone.addEventListener('pointerup', end);
+    zone.addEventListener('pointercancel', end);
+
+    /* 키보드: 당기기 버튼 Enter = 열기, 밀기 버튼 Enter = 덜컹 */
+    zone.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();
+      zone.dataset.mode === 'pull' ? openDoor() : rattle();
+    });
+  });
+
+  /* 열린 문짝: 잡고 오른쪽으로 끌면 닫힘 (클릭만 해도 닫힘) */
+  const CLOSE_AT = 40;       // 열린 상태에서 이만큼(도) 끌어 닫고 놓으면 끝까지 닫힘
+  wrap.querySelectorAll('.face').forEach(face => {
+    face.addEventListener('pointerdown', e => {
+      if (!state.open) return;
+      face.setPointerCapture(e.pointerId);
+      state.closeDrag = { x0: e.clientX, dx: 0, w: wrap.querySelector('.opening').offsetWidth };
+      cur = target = OPEN_DEG;
+      wrap.classList.remove('snapping');
+      wrap.classList.add('dragging');
+    });
+    face.addEventListener('pointermove', e => {
+      const d = state.closeDrag;
+      if (!d) return;
+      d.dx = Math.max(0, e.clientX - d.x0);             // 왼→오 방향만
+      pullTo(Math.min(0, OPEN_DEG + (d.dx / d.w) * PULL_GAIN));   // 열 때처럼 무겁게 뒤따라옴
+      showLabel('닫기 →');
+    });
+    const end = () => {
+      const d = state.closeDrag;
+      if (!d) return;
+      state.closeDrag = null;
+      stopFollow();
+      const travel = (d.dx / d.w) * PULL_GAIN;
+      if (d.dx <= 4 || travel >= CLOSE_AT) {           // 클릭 또는 충분히 끌었으면 닫기
+        showLabel(null);
+        state.close();
+      } else {
+        snapTo(OPEN_DEG);                              // 덜 끌었으면 다시 열림
+      }
+    };
+    face.addEventListener('pointerup', end);
+    face.addEventListener('pointercancel', end);
+  });
+  wrap.querySelector('.door3d').style.touchAction = 'none';
+  doors.push(state);
+}
+
+/* ───────── 시작 ───────── */
+(async function init() {
+  await prepareImages();
+
+  placeSlots();
+  if (LAYOUT.scattered) placeScattered();
+  placeHoles();
+  addRows(CONFIG.batchRows);
+  LAYOUT.doors.forEach(buildDoor);
+
+  /* 버전 1: 문 안에 들어간 덮개 칸은 미리 걷어둠, 나머지는 순차 공개 대상 */
+  if (LAYOUT.scattered) {
+    covers.sort((a, b) => a.r - b.r || a.c - b.c);
+    covers.forEach(item => {
+      if (LAYOUT.doors.some(d => inRect(item.r, item.c, d))) {
+        item.el.classList.add('instant', 'gone');
+      } else {
+        cascade.push(item);
+      }
+    });
+  }
+
+  new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting) addRows(CONFIG.batchRows);
+  }, { rootMargin: '1200px' }).observe(document.getElementById('sentinel'));
+
+  /* 프로젝트 네임: 맨 위로 + 열린 문 다시 닫기 */
+  document.getElementById('projectName').addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (LAYOUT.scattered && revealed) runCascade(false);
+    const wait = LAYOUT.scattered ? cascade.length * CONFIG.stagger + 450 : 0;
+    setTimeout(() => doors.forEach(d => d.close()), wait);
+  });
+
+  document.getElementById('loader').remove();
+  document.body.classList.remove('loading');
+})();
+</script>
+</body>
+</html>
