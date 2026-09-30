@@ -11,10 +11,12 @@
     --cell: calc(100vw / var(--cols));
     --bg: #000;
     --fg: #fff;
-    --wipe: 0.45s;
     /* 1920px 화면 기준 값 → 화면 너비에 비례해 스케일 */
     --u: calc(100vw / 1920);
-    --fs-fixed: calc(var(--u) * 30);   /* 고정 텍스트 30 (20 × 1.5) */
+    --gut:      calc(var(--u) * 30);   /* 박스 안쪽 거터 30 */
+    --fs-title: calc(var(--u) * 25);   /* 해봐야 아는 것들 / 탐색 / 아티클 / 전체 25 */
+    --fs-sub:   calc(var(--u) * 15);   /* 부가설명 15 */
+    --fs-num:   calc(var(--u) * 40);   /* 1,026 40 */
     --fs-body:  calc(var(--u) * 15);   /* 개요 텍스트 15 */
     --lh-body:  calc(var(--u) * 20);   /* 개요 행간 20 */
   }
@@ -36,33 +38,6 @@
   }
   body.loading { overflow: hidden; }
 
-  /* ───────── 고정 텍스트 ───────── */
-  .header {
-    position: fixed; top: 0; left: 0;
-    width: 100%; height: var(--cell);
-    display: grid;
-    grid-template-columns: repeat(var(--cols), var(--cell));
-    z-index: 100;
-    pointer-events: none;
-  }
-  .header > * { display: flex; align-items: center; justify-content: center; }
-  .header button, .header a {
-    pointer-events: auto;
-    background: none;
-    color: var(--fg);
-    border: 0;
-    font: inherit;
-    font-size: var(--fs-fixed);
-    line-height: 1;
-    cursor: pointer;
-    text-decoration: none;
-  }
-  .header .name { grid-column: 1 / span 2; }
-  .header .menu-article { grid-column: 4; }
-  .header .menu-explore { grid-column: 5; }
-
-  .slot { background: var(--bg); grid-row: 1; z-index: 1; }
-
   /* ───────── 그리드 ───────── */
   .grid {
     position: relative;
@@ -74,32 +49,107 @@
     position: relative;
     z-index: 1;
     contain: layout paint;
+  }
+  /* 사진은 안쪽 레이어에. 호버로 커질 때 이 레이어의 크기가 부드럽게 늘어남 (사진이 튀지 않음) */
+  .cell::before, .box-in {
+    content: '';
+    position: absolute; top: 0; left: 0;
+    width: var(--pw, 100%); height: var(--ph, 100%);
+    transition: width var(--hd, .32s) cubic-bezier(.3, 0, .2, 1), height var(--hd, .32s) cubic-bezier(.3, 0, .2, 1);
+  }
+  .cell::before {
     background-color: #111;
     background-image: var(--img);
     background-size: cover;
     background-position: center;
-    clip-path: inset(0 0 0 0);
-    transition: clip-path var(--wipe) cubic-bezier(.7, 0, .3, 1);
   }
-  .cell.cover.gone { clip-path: inset(0 0 0 100%); pointer-events: none; }
-  .cell.cover.instant { transition: none; }
+  /* 사진 히트맵: 호버하면 사진에 열화상 그라데이션 맵이 씌워지고, 떠나면 서서히 식으며 사라짐
+     필터는 고정된 3단계(뜨거움·따뜻함·식음) 레이어로 두고, 겹친 레이어의 불투명도만 바꿔서 색이 옮겨가게 함
+     (필터 값을 매 프레임 바꾸면 브라우저에 따라 깜빡이거나 사진이 사라져서) */
+  .heat {
+    position: absolute; inset: 0;
+    background-image: var(--img);
+    background-size: cover;
+    background-position: center;
+    opacity: 0;
+    will-change: opacity;
+    pointer-events: none;
+  }
+  .heat.h-cool { filter: url(#thermalCool); }
+  .heat.h-warm { filter: url(#thermalWarm); }
+  .heat.h-hot  { filter: url(#thermalHot); }
+  /* 캔버스 방식: 픽셀마다 온도를 직접 칠함 → 색이 끊김 없이 연속으로 식음 */
+  .heatc { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .grow-left::before, .grow-left > .box-in { left: auto; right: 0; }   /* 왼쪽으로 커질 때는 오른쪽 끝 고정 */
+  .nt::before, .nt > .box-in { transition: none !important; }
 
-  /* ───────── 개요 텍스트 ───────── */
-  .text, .hole {
-    z-index: 0;
-    background: var(--bg);
+  /* ───────── 메인 박스 (단색, 칸에 딱 맞음) ───────── */
+  .box {
+    position: relative;
+    z-index: 3;                                   /* 사진 칸 위에 올라감 */
+    display: block;
+    background: none;
+    color: var(--box-fg);
+    border: 0;
+    padding: 0;
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .box-in { background: var(--box-bg); }
+  /* 박스는 칸 좌표(--c, --r, --w, --h)로 절대 배치 → 커지고 작아질 때 위치·크기가 부드럽게 바뀜 */
+  .box {
+    position: absolute;
+    left: calc(var(--cell) * (var(--c) - 1));
+    top:  calc(var(--cell) * (var(--r) - 1));
+    width:  calc(var(--cell) * var(--w));
+    height: calc(var(--cell) * var(--h));
+    transition-property: left, top, width, height;
+    transition-duration: var(--hd, 1.1s);
+    transition-timing-function: cubic-bezier(.3, 0, .2, 1);
+  }
+  .box.nt { transition: none !important; }
+  .box > .box-in { inset: 0; width: auto; height: auto; overflow: hidden; }
+
+  .box .title {
+    position: absolute; left: var(--gut); top: var(--gut);
+    font-size: var(--fs-title);
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .box .sub {
+    position: absolute; right: var(--gut); bottom: var(--gut);
+    display: flex; align-items: center; gap: calc(var(--u) * 10);
+    font-size: var(--fs-sub);
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .box .sub svg { width: calc(var(--u) * 18); height: calc(var(--u) * 12); flex: none; }
+  .box .num {
+    position: absolute; right: var(--gut); bottom: var(--gut);   /* 오른쪽 아래 정렬 */
+    font-size: var(--fs-num);
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  /* ───────── 개요 텍스트 (문 안쪽) ───────── */
+  .hole {
+    z-index: 2;
+    background: var(--box-bg);
+    color: var(--box-fg);
     display: flex; align-items: center; justify-content: center;
     font-size: var(--fs-body);
     line-height: var(--lh-body);
     letter-spacing: 0.01em;
     word-spacing: 0.15em;
   }
-  .text p, .hole p { text-align: left; white-space: nowrap; }
+  .hole { overflow: hidden; }                    /* 문이 작아졌을 때 개요 텍스트가 문 밖으로 새지 않게 */
+  .hole p { text-align: left; white-space: nowrap; }
   .hole .copy p + p { margin-top: var(--lh-body); }   /* 문장 묶음 사이 한 줄 */
 
   /* ───────── 문 (실사 사진, 두께 없는 한 장) ───────── */
   .door-wrap {
-    /* 문 안쪽(문짝 자리)이 정확히 그리드 칸에 맞음. 문틀은 그 바깥으로 나옴 */
     --k:  calc(var(--cell) / 200);
     /* 문틀 포함 문 전체가 칸(w × h)에 딱 맞음 */
     --W:  calc(var(--cell) * var(--w));
@@ -169,7 +219,7 @@
     transform: scaleX(-1);
   }
   /* 열린 문짝을 누르면 닫힘 */
-  .door-wrap.open .face { cursor: pointer; }
+  .door-wrap.open, .door-wrap.open .face, .hole.closable { cursor: pointer; }
 
   /* 당기시오 표지판 (CSS 제작) — 사진 속 손잡이 위 */
   .sign {
@@ -233,10 +283,25 @@
     100% { rotate: y 0deg; }
   }
   .door3d.rattle { animation: rattle .42s linear; }
+
+  /* 문에 마우스를 올리면: 누가 두드린 듯 쿵, 쿵 */
+  @keyframes knock {
+    0%   { rotate: y 0deg; }
+    8%   { rotate: y 1.4deg; }
+    18%  { rotate: y -0.3deg; }
+    26%  { rotate: y 0deg; }
+    44%  { rotate: y 0deg; }
+    52%  { rotate: y 1.4deg; }
+    62%  { rotate: y -0.3deg; }
+    72%  { rotate: y 0deg; }
+    100% { rotate: y 0deg; }
+  }
+  .door3d.knock { animation: knock .7s cubic-bezier(.2, .7, .3, 1); }
   @keyframes flash { 0%, 100% { filter: none; } 50% { filter: invert(1); } }
   .sign.flash { animation: flash .6s steps(1) 2; }   /* 0.3초씩 반전 → 두 번 깜빡 */
 
   .door-wrap.open .zones { pointer-events: none; }   /* 열린 뒤엔 문 안쪽 텍스트를 가리지 않음 */
+
 
   .door-label {
     position: fixed; z-index: 200;
@@ -249,12 +314,62 @@
   }
   .door-label.on { display: block; }
 
+
+  /* ───────── 박스 등장·퇴장: 옆으로 밀리듯 ─────────
+     등장: 왼쪽에서 오른쪽으로 열림 / 퇴장: 왼쪽부터 오른쪽으로 닫힘 */
+  /* 등장: 0×0에서 원래 크기로 커짐 / 퇴장: 0×0으로 작아짐
+     기준점은 칸 모서리(꼭짓점): 화면 왼쪽 박스는 왼쪽 위, 오른쪽 박스는 오른쪽 위 → 그리드 선에 맞춰 펼쳐짐 */
+  @keyframes boxIn  { from { inset: 0 100% 100% 0; } to { inset: 0; } }          /* 박스: 색면이 커지고 글자는 모서리를 따라 퍼짐 */
+  @keyframes boxOut { from { inset: 0; } to { inset: 0 100% 100% 0; } }            /* 퇴장도 나타난 꼭짓점(왼쪽 위)으로 */
+  @keyframes boxInR  { from { inset: 0 0 100% 100%; } to { inset: 0; } }
+  @keyframes boxOutR { from { inset: 0; } to { inset: 0 0 100% 100%; } }           /* 오른쪽 박스는 오른쪽 위로 */
+  .from-right.box.anim-in  > .box-in { animation-name: boxInR; }
+  .from-right.box.anim-out > .box-in { animation-name: boxOutR; }
+  .door-wrap.anim-in, .hole.anim-in { transform-origin: left top; }
+  .door-wrap.anim-in.from-right, .hole.anim-in.from-right { transform-origin: right top; }
+  .door-wrap.anim-out, .hole.anim-out { transform-origin: left top; }               /* 퇴장도 나타난 꼭짓점으로 */
+  .door-wrap.anim-out.from-right, .hole.anim-out.from-right { transform-origin: right top; }
+  @keyframes popIn  { from { scale: 0; } to { scale: 1; } }            /* 문: 통째로 커짐 */
+  @keyframes popOut { from { scale: 1; } to { scale: 0; } }
+  .anim-in  { animation: popIn  var(--slide, .8s) cubic-bezier(.3, 0, .2, 1) var(--delay, 0s) backwards; }
+  .anim-out { animation: popOut var(--slide, .8s) cubic-bezier(.3, 0, .2, 1) var(--delay, 0s) forwards; pointer-events: none; }
+  .box.anim-in, .box.anim-out { animation: none; }
+  .box.anim-in  > .box-in { animation: boxIn  var(--slide, .8s) cubic-bezier(.3, 0, .2, 1) var(--delay, 0s) backwards; }
+  .box.anim-out > .box-in { animation: boxOut var(--slide, .8s) cubic-bezier(.3, 0, .2, 1) var(--delay, 0s) forwards; }
+
+  /* 호버로 커진 아이템: 이웃 위로 올라옴
+     사진 칸은 다른 사진 칸 위·박스 아래 (커진 칸이 박스를 덮지 않게)
+     박스는 사진 칸 위 (문·마우스 히트맵보다는 아래) */
+  .cell.hovering { z-index: 2; }
+
+  /* 이웃이 밀려나고 돌아오는 움직임 */
+  .cell, .door-wrap, .hole { transition: translate var(--hd, .32s) cubic-bezier(.3, 0, .2, 1); }
+  .cell.nt { transition: none !important; }
+  /* 문이 호버로 한 칸씩 커질 때: 문틀·문짝·안쪽 판이 함께 부드럽게 커짐 */
+  .door-wrap, .hole {
+    transition-property: translate, left, top, width, height;
+    transition-duration: var(--hd, .32s);
+    transition-timing-function: cubic-bezier(.3, 0, .2, 1);
+  }
+  .door-wrap .opening, .door-wrap .zones {
+    transition: left var(--hd, .32s) cubic-bezier(.3, 0, .2, 1), top var(--hd, .32s) cubic-bezier(.3, 0, .2, 1),
+                width var(--hd, .32s) cubic-bezier(.3, 0, .2, 1), height var(--hd, .32s) cubic-bezier(.3, 0, .2, 1);
+  }
+  .door-wrap .casing { transition: border-width var(--hd, .32s) cubic-bezier(.3, 0, .2, 1); }
+  .door-wrap.nt, .door-wrap.nt .opening, .door-wrap.nt .zones, .door-wrap.nt .casing, .hole.nt { transition: none !important; }
+  .box.hovering  { z-index: 10; }
+
   .sentinel { height: 1px; }
 
+  /* ───────── 열화상 잔상 ─────────
+     화면에 고정된 캔버스. 사진 칸(z 1) 위, 박스·문 안쪽 판(z 2~3)·문(z 50) 아래. 열이 없는 곳은 투명 */
+
+
+
   @media (prefers-reduced-motion: reduce) {
-    :root { --wipe: 0s; }
+    .anim-in, .anim-out, .anim-in > .box-in, .anim-out > .box-in { animation-duration: 1ms; }
     .door-wrap .door3d, .door-wrap.snapping .door3d { transition: none; }
-    .door3d.rattle, .sign.flash { animation: none; }
+    .door3d.rattle, .door3d.knock, .sign.flash { animation: none; }
   }
 </style>
 </head>
@@ -262,12 +377,44 @@
 
 <div class="loader" id="loader">불러오는 중</div>
 
-<header class="header">
-  <div class="name"><button type="button" id="projectName">해봐야 아는 것들</button></div>
-  <div class="menu-article"><a href="#">아티클</a></div>
-  <div class="menu-explore"><a href="#">탐색</a></div>
-</header>
-
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <!-- 열화상 그라데이션 맵: 사진의 밝기를 남색 → 파랑 → 보라 → 빨강 → 주황 → 노랑 → 흰색으로 -->
+  <filter id="thermalMap" color-interpolation-filters="sRGB">
+    <feColorMatrix type="matrix" values="0.2126 0.7152 0.0722 0 0  0.2126 0.7152 0.0722 0 0  0.2126 0.7152 0.0722 0 0  0 0 0 1 0"/>
+    <feComponentTransfer>
+      <feFuncR type="table" tableValues="0.020 0.026 0.033 0.039 0.065 0.092 0.118 0.235 0.353 0.471 0.647 0.824 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000"/>
+      <feFuncG type="table" tableValues="0.020 0.039 0.059 0.078 0.105 0.131 0.157 0.131 0.105 0.078 0.105 0.131 0.157 0.327 0.497 0.667 0.765 0.863 0.961 0.980 1.000"/>
+      <feFuncB type="table" tableValues="0.078 0.170 0.261 0.353 0.523 0.693 0.863 0.758 0.654 0.549 0.379 0.209 0.039 0.039 0.039 0.039 0.039 0.039 0.039 0.520 1.000"/>
+    </feComponentTransfer>
+  </filter>
+  <filter id="thermalHot" color-interpolation-filters="sRGB">
+    <feColorMatrix type="matrix" values="0.2339 0.7867 0.0794 0 0  0.2339 0.7867 0.0794 0 0  0.2339 0.7867 0.0794 0 0  0 0 0 1 0"/>
+    <feComponentTransfer><feFuncR type="linear" slope="0.72" intercept="0.28"/><feFuncG type="linear" slope="0.72" intercept="0.28"/><feFuncB type="linear" slope="0.72" intercept="0.28"/></feComponentTransfer>
+    <feComponentTransfer>
+      <feFuncR type="table" tableValues="0.020 0.026 0.033 0.039 0.065 0.092 0.118 0.235 0.353 0.471 0.647 0.824 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000"/>
+      <feFuncG type="table" tableValues="0.020 0.039 0.059 0.078 0.105 0.131 0.157 0.131 0.105 0.078 0.105 0.131 0.157 0.327 0.497 0.667 0.765 0.863 0.961 0.980 1.000"/>
+      <feFuncB type="table" tableValues="0.078 0.170 0.261 0.353 0.523 0.693 0.863 0.758 0.654 0.549 0.379 0.209 0.039 0.039 0.039 0.039 0.039 0.039 0.039 0.520 1.000"/>
+    </feComponentTransfer>
+  </filter>
+  <filter id="thermalWarm" color-interpolation-filters="sRGB">
+    <feColorMatrix type="matrix" values="0.1807 0.6079 0.0614 0 0  0.1807 0.6079 0.0614 0 0  0.1807 0.6079 0.0614 0 0  0 0 0 1 0"/>
+    <feComponentTransfer><feFuncR type="linear" slope="0.72" intercept="0.28"/><feFuncG type="linear" slope="0.72" intercept="0.28"/><feFuncB type="linear" slope="0.72" intercept="0.28"/></feComponentTransfer>
+    <feComponentTransfer>
+      <feFuncR type="table" tableValues="0.020 0.026 0.033 0.039 0.065 0.092 0.118 0.235 0.353 0.471 0.647 0.824 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000"/>
+      <feFuncG type="table" tableValues="0.020 0.039 0.059 0.078 0.105 0.131 0.157 0.131 0.105 0.078 0.105 0.131 0.157 0.327 0.497 0.667 0.765 0.863 0.961 0.980 1.000"/>
+      <feFuncB type="table" tableValues="0.078 0.170 0.261 0.353 0.523 0.693 0.863 0.758 0.654 0.549 0.379 0.209 0.039 0.039 0.039 0.039 0.039 0.039 0.039 0.520 1.000"/>
+    </feComponentTransfer>
+  </filter>
+  <filter id="thermalCool" color-interpolation-filters="sRGB">
+    <feColorMatrix type="matrix" values="0.1276 0.4291 0.0433 0 0  0.1276 0.4291 0.0433 0 0  0.1276 0.4291 0.0433 0 0  0 0 0 1 0"/>
+    <feComponentTransfer><feFuncR type="linear" slope="0.72" intercept="0.28"/><feFuncG type="linear" slope="0.72" intercept="0.28"/><feFuncB type="linear" slope="0.72" intercept="0.28"/></feComponentTransfer>
+    <feComponentTransfer>
+      <feFuncR type="table" tableValues="0.020 0.026 0.033 0.039 0.065 0.092 0.118 0.235 0.353 0.471 0.647 0.824 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000 1.000"/>
+      <feFuncG type="table" tableValues="0.020 0.039 0.059 0.078 0.105 0.131 0.157 0.131 0.105 0.078 0.105 0.131 0.157 0.327 0.497 0.667 0.765 0.863 0.961 0.980 1.000"/>
+      <feFuncB type="table" tableValues="0.078 0.170 0.261 0.353 0.523 0.693 0.863 0.758 0.654 0.549 0.379 0.209 0.039 0.039 0.039 0.039 0.039 0.039 0.039 0.520 1.000"/>
+    </feComponentTransfer>
+  </filter>
+</svg>
 <main class="grid" id="grid"></main>
 <div class="door-label" id="doorLabel"></div>
 <div class="sentinel" id="sentinel"></div>
@@ -296,73 +443,49 @@
 </template>
 
 <script>
-/* ───────── 버전 선택 (1 / 2 / 3) ───────── */
-const VERSION = 2;
-
 /* ───────── 설정 ───────── */
 const CONFIG = {
   imageCount: 64,                                          // 이미지 늘어나면 이 숫자만 수정
   path: n => `images/A${String(n).padStart(4, '0')}.png`,  // 폴더명 다르면 'images/' 수정
   cols: 12,
   batchRows: 8,
-  stagger: 90,
+  sectionRows: 8,     // 한 구간 = 8행 (구간이 화면 위로 넘어가면 다음 구간으로)
+  boxRows: 6,         // 박스는 각 구간의 위쪽 6행 안에서만 배치
+  switchAt: 0.5,      // 박스 영역(6행)이 이 비율만큼 화면 위로 넘어가면 다음 구간으로 (0.5 = 3행)
+  stagger: 90,        // 박스가 차례로 밀려 들어오는 간격(ms)
 };
 
-/* 개요 문장 */
+/* ───────── 메인 박스 5개 (w × h 칸) ─────────
+   텍스트는 임시 고정값 */
+const ARROW = '<svg viewBox="0 0 18 12" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M0 6h17M11.5 .5 17 6l-5.5 5.5"/></svg>';
+const BOXES = [
+  { id: 'door',    w: 3, h: 5 },
+  { id: 'name',    w: 3, h: 2, tag: 'button',
+    html: `<span class="title">해봐야 아는 것들</span><span class="sub">interface archiving</span>` },
+  { id: 'explore', w: 2, h: 2, tag: 'a', href: '#',
+    html: `<span class="title">탐색</span><span class="sub">누르고, 돌리고, 잡은 것들 ${ARROW}</span>` },
+  { id: 'article', w: 2, h: 2, tag: 'a', href: '#',
+    html: `<span class="title">아티클</span><span class="sub">2026년 10월 &lt;트리거의 계보&gt; ${ARROW}</span>` },
+  { id: 'all',     w: 2, h: 1, tag: 'a', href: '#',
+    html: `<span class="title">전체</span><span class="num">1,026</span>` },
+];
+
+/* 개요 문장 (문 안쪽) */
 const SENTENCES = [
   '당겨야 열리는 문을<br>굳이 밀어서 열 때가 있다.',
   '그런데 이런 경험을<br>더는 공유할 수 없을지도 모른다.',
-  '문의 손잡이는 자동문 버튼으로,<br>자동차 대시보드의 수십 개 버튼은 터치스크린 하나로,<br>열쇠는 얼굴로 변해가고 있기 때문이다.<br>그리고 그 감각들의 종류도<br>점점 줄어간다.',
+  '문의 손잡이는 자동문 버튼으로,<br>자동차 대시보드의 수십 개 버튼은 터치스크린 하나로,<br>열쇠는 얼굴로 변해가고 있기 때문이다.<br>그리고 그 감각들의 종류도 점점 줄어간다.',
   '‘해봐야 아는 것들’은 그 기록을 남기는<br>오픈 아카이브 프로젝트다.',
-  '이 프로젝트에서는<br>인간의 동작과 대응하는<br>모든 조작 접점을<br>인터페이스로 정의하고 수집한다.',
-  '그리고 수집된 인터페이스는<br>동사와 분야라는 두 가지<br>메타데이터 축으로 분류된다.',
+  '이 프로젝트에서는<br>인간의 동작과 대응하는 모든 조작 접점을<br>인터페이스로 정의하고 수집한다.',
+  '그리고 수집된 인터페이스는 동사와 분야라는<br>두 가지 메타데이터 축으로 분류된다.',
 ];
-
-/* 흩어진 배치 (버전 1에서 사용) — row(행), col(시작 열), span(차지 칸 수) */
-const SCATTERED = [
-  { row: 2, col: 2,  span: 2, s: 0 },
-  { row: 3, col: 3,  span: 2, s: 1 },
-  { row: 4, col: 4,  span: 3, s: 2 },
-  { row: 4, col: 8,  span: 2, s: 3 },
-  { row: 5, col: 9,  span: 2, s: 4 },
-  { row: 6, col: 10, span: 2, s: 5 },
-];
-
-/* 문 배치 — col/row: 문 안쪽 왼쪽 위 칸, w/h: 가로·세로 칸 수
-   hole: true  → 문 안쪽이 검은 칸이 되고, texts의 문장을 담음
-   hole: false → 문 뒤로 그리드가 그대로 보임 (버전 1) */
-const LAYOUTS = {
-  1: { scattered: true,
-       doors: [ { col: 2, row: 2, w: 2, h: 3, hole: false } ] },
-  /* 문 규격: 3칸 × 5칸 = 15칸. 문틀까지 포함한 문 전체가 칸에 딱 맞음 */
-  2: { doors: [ { col: 5, row: 3, w: 3, h: 5, hole: true, texts: [0, 1, 2, 3, 4, 5] } ] },
-  3: { doors: [ { col: 5, row: 2, w: 4, h: 5, hole: true, texts: [0, 1, 2, 3, 4, 5] } ] },
-};
-const LAYOUT = LAYOUTS[VERSION];
-
-/* ───────── 문 위치: 새로고침마다 랜덤 ─────────
-   - 규격 고정: 3칸 × 5칸, 항상 칸에 딱 맞음
-   - 가로: 화면 밖으로 안 나감 (1~9열에서 시작)
-   - 세로: 문 윗부분이 1~6행에서 시작
-   - 고정 텍스트 칸(1행의 1·2·4·5열)과 안 겹침 */
-const DOOR_RANDOM = true;       // false면 LAYOUTS에 적힌 위치 그대로
-const MAX_START_ROW = 6;        // 문이 시작할 수 있는 가장 아래 행
-
-function randomizeDoor(d) {
-  const spots = [];
-  for (let row = 1; row <= MAX_START_ROW; row++) {
-    for (let col = 1; col + d.w - 1 <= CONFIG.cols; col++) {
-      const hitsFixed = SLOT_CELLS.some(([r, c]) =>
-        r >= row && r < row + d.h && c >= col && c < col + d.w);
-      if (!hitsFixed) spots.push({ row, col });
-    }
-  }
-  Object.assign(d, spots[Math.floor(Math.random() * spots.length)]);
-}
 
 const grid = document.getElementById('grid');
-let rowCount = 0;
-const covers = [];
+const rand = n => Math.floor(Math.random() * n);
+const shuffle = arr => {
+  for (let i = arr.length - 1; i > 0; i--) { const j = rand(i + 1); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+  return arr;
+};
 
 /* ───────── 이미지 ───────── */
 function loadImage(src) {
@@ -374,6 +497,7 @@ function loadImage(src) {
   });
 }
 
+let IMAGES = [];   // { n, img }
 async function prepareImages() {
   const imgs = await Promise.all(
     Array.from({ length: CONFIG.imageCount }, (_, i) => loadImage(CONFIG.path(i + 1)))
@@ -381,6 +505,7 @@ async function prepareImages() {
   let css = '';
   imgs.forEach((img, i) => {
     if (!img) return;
+    IMAGES.push({ n: i + 1, img });
     css += `.im-${i + 1}{--img:url(${img.src});}\n`;
   });
   const style = document.createElement('style');
@@ -388,93 +513,556 @@ async function prepareImages() {
   document.head.appendChild(style);
 }
 
-/* ───────── 그리드 ───────── */
-const SLOTS = [ { col: 1, span: 2 }, { col: 4, span: 1 }, { col: 5, span: 1 } ];
-const SLOT_CELLS = SLOTS.flatMap(s => Array.from({ length: s.span }, (_, i) => [1, s.col + i]));
+/* ───────── 박스 색: 컬러 팔레트 ─────────
+   웹 화면 캡처에서 뽑은 색 중 검정에 가까운 색, 겹치거나 비슷한 색을 뺀 12색.
+   로딩할 때마다 이 중 서로 다른 5색을 골라 박스에 하나씩 부여 (같은 색이 두 번 나오지 않음) */
+const PALETTE = [
+  '#414757', '#5a5047', '#7c454f', '#82643c', '#746d76', '#c66335',
+  '#a9737d', '#8691a4', '#ad9275', '#d4bea5', '#cac9c8', '#fcefd8',
+];
+const hexToRgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
 
-const inRect = (r, c, d) => r >= d.row && r < d.row + d.h && c >= d.col && c < d.col + d.w;
-const isSlot = (r, c) => r === 1 && SLOTS.some(s => c >= s.col && c < s.col + s.span);
-const isHole = () => false;   // 칸은 비우지 않고, 문짝 자리만 검은 판이 덮음
-const isCovering = (r, c) => LAYOUT.scattered &&
-  SCATTERED.some(t => t.row === r && c >= t.col && c < t.col + t.span);
+function applyColor(el, rgb) {
+  const [r, g, b] = rgb;
+  const light = (r * 299 + g * 587 + b * 114) / 1000 >= 150;   // 밝으면 검정 글자, 어두우면 흰 글자
+  el.style.setProperty('--box-bg', `rgb(${r}, ${g}, ${b})`);
+  el.style.setProperty('--box-fg', light ? '#000000' : '#ffffff');
+}
 
-function placeSlots() {
-  SLOTS.forEach(s => {
-    const el = document.createElement('div');
-    el.className = 'slot';
-    el.style.gridColumn = `${s.col} / span ${s.span}`;
+/* ───────── 박스 배치: 새로고침마다 랜덤 ─────────
+   - 항상 칸에 딱 맞음, 화면 밖으로 안 나감
+   - 모든 박스가 구간의 1~6행 안 (CONFIG.boxRows)
+   - 서로 겹치지 않고, 수평·수직으로 맞닿지도 않음 (모서리끼리 대각선으로 닿는 건 허용) */
+function conflicts(a, b) {
+  const overlap = (s1, l1, s2, l2) => s1 < s2 + l2 && s2 < s1 + l1;        // 범위가 겹침
+  const touch   = (s1, l1, s2, l2) => s1 <= s2 + l2 && s2 <= s1 + l1;      // 겹치거나 맞닿음
+  const ox = overlap(a.col, a.w, b.col, b.w), ax = touch(a.col, a.w, b.col, b.w);
+  const oy = overlap(a.row, a.h, b.row, b.h), ay = touch(a.row, a.h, b.row, b.h);
+  return (ox && ay) || (oy && ax);
+}
+function layoutBoxes() {
+  for (let attempt = 0; attempt < 500; attempt++) {
+    const placed = [];
+    let ok = true;
+    for (const b of BOXES) {
+      const spots = [];
+      for (let row = 1; row + b.h - 1 <= CONFIG.boxRows; row++) {
+        for (let col = 1; col + b.w - 1 <= CONFIG.cols; col++) {
+          const free = placed.every(p => !conflicts({ col, row, w: b.w, h: b.h }, p));
+          if (free) spots.push({ row, col });
+        }
+      }
+      if (!spots.length) { ok = false; break; }
+      Object.assign(b, spots[rand(spots.length)]);
+      placed.push(b);
+    }
+    if (ok) return;
+  }
+}
+/* 박스 요소는 한 번만 만들고, 구간이 바뀔 때마다 위치·색만 바꿈 */
+function createBoxes() {
+  BOXES.forEach(b => {
+    if (b.id === 'door') return;
+    const el = document.createElement(b.tag);
+    el.className = `box box-${b.id}`;
+    if (b.tag === 'a') el.href = b.href;
+    if (b.tag === 'button') el.type = 'button';
+    el.innerHTML = `<div class="box-in">${b.html}</div>`;
     grid.appendChild(el);
+    b.el = el;
   });
 }
 
-function makeCell(r, c) {
-  const index = (r - 1) * CONFIG.cols + (c - 1);
-  const n = (index % CONFIG.imageCount) + 1;
-  const cell = document.createElement('div');
-  cell.className = `cell im-${n}`;
-  cell.style.gridRow = r;
-  cell.style.gridColumn = c;
-  if (isCovering(r, c)) {
-    cell.classList.add('cover');
-    covers.push({ el: cell, r, c });
-  }
-  return cell;
+/* 문 안쪽 판 + 개요 텍스트 (문 박스의 색) */
+let holeEl = null;
+function createHole(d) {
+  holeEl = document.createElement('div');
+  holeEl.className = 'hole';
+  holeEl.style.setProperty('--s', `calc(var(--cell) * ${d.w} / 895)`);
+  Object.assign(holeEl.style, {
+    position: 'absolute',
+    width:  `calc(var(--cell) * ${d.w} - var(--s) * 105)`,
+    height: `calc(var(--cell) * ${d.h} - var(--s) * 50)`,
+  });
+  holeEl.innerHTML = `<div class="copy">${SENTENCES.map(s => `<p>${s}</p>`).join('')}</div>`;
+  grid.appendChild(holeEl);
 }
+function positionHole(col, row) {
+  holeEl.style.left = `calc(var(--cell) * ${col - 1} + var(--s) * 53)`;
+  holeEl.style.top  = `calc(var(--cell) * ${row - 1} + var(--s) * 50)`;
+}
+
+/* 박스의 현재 색 [r,g,b] (문은 안쪽 판의 색) */
+const boxRgb = b => {
+  const el = b.id === 'door' ? holeEl : b.el;
+  const m = (el.style.getPropertyValue('--box-bg').match(/\d+/g) || [255, 255, 255]).map(Number);
+  return m.slice(0, 3);
+};
+
+/* 박스별로 함께 움직이는 요소 묶음 (문 = 문틀·문짝 + 안쪽 판) */
+const partsOf = b => b.id === 'door' ? [doors[0].wrap, holeEl] : [b.el];
+
+/* ───────── 열화상 잔상 ─────────
+   (Thermal Field 코드 기반)
+   - 박스가 밀려나거나(떠날 때) 밀려 들어오는(나타날 때) 동안 열이 생기고, 그 열은 박스 높이 안에서 좌우로만 퍼지고 식음
+   - 열은 퍼지고(확산) 식으면서(감쇠) 잔상으로 남음
+   - 스크롤하면 잔상도 페이지와 함께 움직임 */
+const THERMAL = {
+  mode: 'thermal',      // 'thermal' = 원래 열화상 색 / 'white' = 화이트 핫 / 'box' = 박스 색으로 식기
+  fieldScale: 0.25,     // 온도 필드 해상도 (화면의 1/4)
+  softness: 30,         // 열이 번지는 폭(px)
+  bodyHeat: 0.012,      // 움직이는 박스 면이 프레임마다 더하는 열 (살짝)
+  edgeHeat: 0.09,       // 움직이는 가장자리(밀리는 면)가 더하는 열
+  edgeWidth: 0.12,      // 가장자리 띠 두께 (박스 너비 비율)
+  /* 움직임 잔상: 아이템이 커지거나 밀릴 때 지나간 가장자리 뒤로 얇게, 빠르게 */
+  trailWidth: 2,        // 잔상 선 두께(px)
+  trailSoftness: 2,     // 선이 번지는 정도(px)
+  trailHeat: 0.3,       // 한 프레임에 더하는 열
+  trailDecay: 0.78,     // 프레임마다 식는 비율 (작을수록 빨리 사라짐)
+  boxSpread: 70,        // 박스 잔상이 좌우로 번지는 폭(px). 위아래로는 번지지 않음
+  decay: 0.988,         // 프레임마다 식는 비율 (1에 가까울수록 잔상이 오래 남음)
+  diffusion: 0.25,      // 퍼지는 정도
+  contrast: 1.15,
+  fadeIn: [0.01, 0.3],  // 이 온도 구간에서 투명 → 불투명
+  maxAlpha: 1,          // 박스 잔상 불투명도 (효과 없이 원래 색)
+  mouseAlpha: 0.9,      // 사진 히트맵 불투명도
+  boxLift: 0.25,        // 박스 색 모드: 뜨거운 곳을 흰색 쪽으로 밝히는 정도
+
+  /* 마우스 체온: 커서가 지나간 자리에 열 자국 */
+  mouseSoftness: 22,    // 커서 열이 번지는 반경(px)
+  mouseMove: 0.75,      // 움직일 때 더하는 열 (빠를수록 최대 이만큼)
+  mouseRest: 0.016,     // 멈춰 있을 때 커서 아래에 계속 더하는 열 (손을 대고 있는 느낌)
+  mouseRestTime: 2500,  // 멈춘 뒤 이 시간(ms)까지만 체온을 더함
+};
+
+const thermal = (() => {
+  const canvas = document.createElement('canvas');           // (박스 잔상은 뺐음: 화면에 붙이지 않는 빈 캔버스)
+  const ctx = canvas.getContext('2d');
+  const mCanvas = document.createElement('canvas');            // (화면에 붙이지 않음)
+  const mctx = mCanvas.getContext('2d');
+  const colorCanvas = document.createElement('canvas');
+  const colorCtx = colorCanvas.getContext('2d');
+  const mColorCanvas = document.createElement('canvas');
+  const mColorCtx = mColorCanvas.getContext('2d');
+  let mImage, mpx;
+  let W, H, fw, fh, temp, htemp, buf, image, px;   // temp = 마우스 열(사방으로 퍼짐), htemp = 박스 잔상(좌우로만 퍼짐)
+  /* 온도 필드는 화면보다 위아래로 한 화면(PAD)씩 더 큼.
+     → 화면 밖에 걸친 박스 부분도 열을 받아서, 스크롤해 들어와도 잔상이 이어짐 */
+  let PAD, padRows, visRows;
+  let cr, cg, cb, cw;   // 박스 색 모드: 열에 섞인 색(가중 합)
+  let lastScroll = scrollY, scrollAcc = 0;
+  let running = false;
+  const sources = new Map();   // 요소 → 그 박스의 색 [r,g,b]
+  const movers = new Map();    // 움직이는 아이템 → { prev: 지난 프레임 위치, until: 추적 종료 시각 }
+
+  /* 아이템이 실제로 보이는 사각형 (사진은 안쪽 레이어, 박스는 .box-in, 문은 문 전체) */
+  function itemRect(el) {
+    const r = el.getBoundingClientRect();
+    if (el.classList.contains('cell')) {
+      const cs = getComputedStyle(el, '::before');
+      const w = parseFloat(cs.width) || r.width, h = parseFloat(cs.height) || r.height;
+      return { left: el.classList.contains('grow-left') ? r.right - w : r.left, top: r.top, width: w, height: h };
+    }
+    if (el.classList.contains('box')) {
+      const b = el.querySelector('.box-in').getBoundingClientRect();
+      return { left: b.left, top: b.top, width: b.width, height: b.height };
+    }
+    return { left: r.left, top: r.top, width: r.width, height: r.height };
+  }
+
+  function resize() {
+    W = innerWidth; H = innerHeight;
+    canvas.width = W; canvas.height = H;
+    mCanvas.width = W; mCanvas.height = H;
+    fw = Math.max(1, Math.floor(W * THERMAL.fieldScale));
+    PAD = H;
+    padRows = Math.round(PAD * THERMAL.fieldScale);
+    visRows = Math.max(1, Math.floor(H * THERMAL.fieldScale));
+    fh = visRows + padRows * 2;
+    temp = new Float32Array(fw * fh);
+    htemp = new Float32Array(fw * fh);
+    buf  = new Float32Array(fw * fh);
+    cr = new Float32Array(fw * fh); cg = new Float32Array(fw * fh);
+    cb = new Float32Array(fw * fh); cw = new Float32Array(fw * fh);
+    colorCanvas.width = fw; colorCanvas.height = visRows;       // 그리는 건 화면에 보이는 줄만
+    image = colorCtx.createImageData(fw, visRows);
+    px = image.data;
+    mColorCanvas.width = fw; mColorCanvas.height = visRows;
+    mImage = mColorCtx.createImageData(fw, visRows);
+    mpx = mImage.data;
+  }
+
+  /* 사각형 주변에 열 더하기 (가우시안으로 번짐) */
+  function addHeat(r, intensity, rgb, soft = THERMAL.softness, field = temp) {
+    const S = THERMAL.fieldScale;
+    const margin = soft * 3;
+    const x0 = Math.max(0, Math.floor((r.left - margin) * S)), x1 = Math.min(fw - 1, Math.ceil((r.left + r.width + margin) * S));
+    const y0 = Math.max(0, Math.floor((r.top + PAD - margin) * S)),  y1 = Math.min(fh - 1, Math.ceil((r.top + PAD + r.height + margin) * S));
+    for (let y = y0; y <= y1; y++) {
+      const py = y / S - PAD;
+      const dy = Math.max(r.top - py, 0, py - (r.top + r.height));
+      for (let x = x0; x <= x1; x++) {
+        const pxl = x / S;
+        const dx = Math.max(r.left - pxl, 0, pxl - (r.left + r.width));
+        const d2 = dx * dx + dy * dy;
+        const v = d2 === 0 ? 1 : Math.exp(-d2 / (2 * soft * soft));
+        if (v < 0.001) continue;
+        const i = y * fw + x;
+        const add = v * intensity;
+        field[i] = Math.min(1, field[i] + add);
+        if (rgb) { cr[i] += rgb[0] * add; cg[i] += rgb[1] * add; cb[i] += rgb[2] * add; cw[i] += add; }
+      }
+    }
+  }
+
+  /* 박스 잔상: 박스 높이 안에서만, 좌우로만 번짐 (필드 여백 PAD 반영) */
+  function addSideHeat(r, intensity, rgb) {
+    const S = THERMAL.fieldScale, soft = THERMAL.boxSpread;
+    const margin = soft * 3;
+    const x0 = Math.max(0, Math.floor((r.left - margin) * S)), x1 = Math.min(fw - 1, Math.ceil((r.left + r.width + margin) * S));
+    const y0 = Math.max(0, Math.ceil((r.top + PAD) * S)), y1 = Math.min(fh - 1, Math.floor((r.top + PAD + r.height) * S) - 1);
+    for (let x = x0; x <= x1; x++) {
+      const pxl = x / S;
+      const dx = Math.max(r.left - pxl, 0, pxl - (r.left + r.width));
+      const v = dx === 0 ? 1 : Math.exp(-(dx * dx) / (2 * soft * soft));
+      if (v < 0.001) continue;
+      const add = v * intensity;
+      for (let y = y0; y <= y1; y++) {
+        const i = y * fw + x;
+        htemp[i] = Math.min(1, htemp[i] + add);
+        if (rgb) { cr[i] += rgb[0] * add; cg[i] += rgb[1] * add; cb[i] += rgb[2] * add; cw[i] += add; }
+      }
+    }
+  }
+  /* 좌우로만 퍼지기 */
+  function diffuseH(a0) {
+    const a = THERMAL.diffusion;
+    for (let y = 0; y < fh; y++) {
+      const row = y * fw;
+      for (let x = 0; x < fw; x++) {
+        const i = row + x;
+        const l = x > 0 ? a0[i - 1] : a0[i], rr = x < fw - 1 ? a0[i + 1] : a0[i];
+        buf[i] = a0[i] * (1 - a * 0.5) + (l + rr) * (a * 0.25);
+      }
+    }
+    a0.set(buf);
+  }
+
+  /* 퍼지기 (수평 → 수직) */
+  function diffuse(temp) {
+    const a = THERMAL.diffusion;
+    for (let y = 0; y < fh; y++) {
+      const row = y * fw;
+      for (let x = 0; x < fw; x++) {
+        const i = row + x;
+        const l = x > 0 ? temp[i - 1] : temp[i], rr = x < fw - 1 ? temp[i + 1] : temp[i];
+        buf[i] = temp[i] * (1 - a * 0.5) + (l + rr) * (a * 0.25);
+      }
+    }
+    for (let y = 0; y < fh; y++) {
+      const row = y * fw;
+      for (let x = 0; x < fw; x++) {
+        const i = row + x;
+        const t = y > 0 ? buf[i - fw] : buf[i], b = y < fh - 1 ? buf[i + fw] : buf[i];
+        temp[i] = buf[i] * (1 - a * 0.5) + (t + b) * (a * 0.25);
+      }
+    }
+  }
+
+  /* 스크롤한 만큼 온도 필드를 위아래로 밀어 잔상이 페이지에 붙어 있게 */
+  function followScroll() {
+    scrollAcc += (scrollY - lastScroll) * THERMAL.fieldScale;
+    lastScroll = scrollY;
+    const n = Math.trunc(scrollAcc);
+    if (!n) return;
+    scrollAcc -= n;
+    [temp, htemp, cr, cg, cb, cw].forEach(a => {
+      if (Math.abs(n) >= fh) { a.fill(0); return; }
+      if (n > 0) { a.copyWithin(0, n * fw); a.fill(0, (fh - n) * fw); }
+      else       { a.copyWithin(-n * fw, 0, (fh + n) * fw); a.fill(0, 0, -n * fw); }
+    });
+  }
+
+  /* 열화상 색 (남색 → 파랑 → 보라 → 빨강 → 주황 → 노랑 → 흰색) — 원본 Thermal Field 색 */
+  function thermalColor(v) {
+    v = Math.pow(Math.max(0, Math.min(1, v)), 1 / THERMAL.contrast);
+    let r, g, b, t;
+    if (v < 0.15)      { t = v / 0.15;          r = 5 + t * 5;     g = 5 + t * 15;   b = 20 + t * 70; }
+    else if (v < 0.30) { t = (v - 0.15) / 0.15; r = 10 + t * 20;   g = 20 + t * 20;  b = 90 + t * 130; }
+    else if (v < 0.45) { t = (v - 0.30) / 0.15; r = 30 + t * 90;   g = 40 - t * 20;  b = 220 - t * 80; }
+    else if (v < 0.60) { t = (v - 0.45) / 0.15; r = 120 + t * 135; g = 20 + t * 20;  b = 140 - t * 130; }
+    else if (v < 0.75) { t = (v - 0.60) / 0.15; r = 255;           g = 40 + t * 130; b = 10; }
+    else if (v < 0.90) { t = (v - 0.75) / 0.15; r = 255;           g = 170 + t * 75; b = t * 10; }
+    else               { t = (v - 0.90) / 0.10; r = 255;           g = 245 + t * 10; b = 10 + t * 245; }
+    return [r, g, b];
+  }
+  /* 화이트 핫: 뜨거울수록 흰색, 식을수록 회색으로 흐려지며 투명해짐 */
+  function whiteHot(v) {
+    v = Math.pow(Math.max(0, Math.min(1, v)), 1 / THERMAL.contrast);
+    const g = 150 + v * 105;
+    return [g, g, g];
+  }
+  /* 박스 색으로 식기: 그 자리를 지나간 박스의 색. 뜨거울수록 살짝 밝게 */
+  function boxColor(i, v) {
+    const w = cw[i];
+    if (w < 1e-6) return [255, 255, 255];
+    const lift = Math.min(1, v) * THERMAL.boxLift;
+    return [cr[i] / w, cg[i] / w, cb[i] / w].map(c => c + (255 - c) * lift);
+  }
+  const smooth = (e0, e1, v) => { let t = (v - e0) / (e1 - e0); t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); };
+
+  /* 애니메이션 중인 요소의 '실제로 보이는' 영역 (clip-path inset 반영) */
+  function visibleRect(el) {
+    const r = el.getBoundingClientRect();
+    const m = /inset\(([^)]*)\)/.exec(getComputedStyle(el).clipPath || '');
+    let [t, rt, b, l] = [0, 0, 0, 0];
+    if (m) {
+      const v = m[1].trim().split(/\s+/);
+      const val = (s, size) => s.endsWith('%') ? parseFloat(s) / 100 * size : parseFloat(s) || 0;
+      const vals = [v[0], v[1] ?? v[0], v[2] ?? v[0], v[3] ?? v[1] ?? v[0]];
+      t = val(vals[0], r.height); rt = val(vals[1], r.width); b = val(vals[2], r.height); l = val(vals[3], r.width);
+    }
+    return { left: r.left + l, top: r.top + t, width: r.width - l - rt, height: r.height - t - b, full: r };
+  }
+
+  /* 마우스: 움직인 경로를 따라 열을 찍고, 멈추면 그 자리를 잠깐 데움 */
+  const mouse = { x: 0, y: 0, inside: false, last: 0, trail: [] };
+  /* 마우스 히트맵 제거: 입력을 받지 않음 */
+  false && addEventListener('pointermove', e => {
+    const x = e.clientX, y = e.clientY;
+    if (mouse.inside) {
+      const dx = x - mouse.x, dy = y - mouse.y;
+      const dist = Math.hypot(dx, dy);
+      const speed = Math.min(dist / 40, 1);
+      const steps = Math.max(1, Math.ceil(dist / 12));          // 빠르게 움직여도 끊기지 않게 경로를 촘촘히
+      for (let s = 1; s <= steps; s++) {
+        mouse.trail.push({ x: mouse.x + dx * s / steps, y: mouse.y + dy * s / steps, k: speed / steps });
+      }
+    }
+    mouse.x = x; mouse.y = y; mouse.inside = true; mouse.last = performance.now();
+    wake();
+  }, { passive: true });
+  document.addEventListener('pointerleave', () => { mouse.inside = false; });
+  addEventListener('blur', () => { mouse.inside = false; });
+
+  function mouseHeat() { return false; }
+
+  function frame() {
+    followScroll();
+    const warming = mouseHeat();
+
+    /* 움직이는 아이템: 지난 프레임 위치에서 움직인 가장자리마다 얇은 잔상 선 */
+    const now = performance.now();
+    movers.forEach((m, el) => {
+      if (!el.isConnected || now > m.until) { movers.delete(el); return; }
+      const r = itemRect(el);
+      const p = m.prev;
+      m.prev = r;
+      if (!p) return;
+      const t = THERMAL.trailWidth, s = THERMAL.trailSoftness, q = THERMAL.trailHeat;
+      const top = Math.min(p.top, r.top), bottom = Math.max(p.top + p.height, r.top + r.height);
+      const left = Math.min(p.left, r.left), right = Math.max(p.left + p.width, r.left + r.width);
+      const line = (x0, y0, w, hh) => addHeat({ left: x0, top: y0, width: w, height: hh }, q, null, s, htemp);
+      /* 뒤쪽 가장자리에만: 오른쪽으로 가면 왼쪽 끝, 왼쪽으로 가면 오른쪽 끝, 아래로 가면 위쪽 끝
+         (커지기만 하는 경우엔 늘어나는 끝이 지나간 자리에) */
+      const dl = r.left - p.left, dr = (r.left + r.width) - (p.left + p.width);
+      const dt = r.top - p.top,   db = (r.top + r.height) - (p.top + p.height);
+      const moveX = Math.abs(dl) > 0.3 && Math.abs(dr) > 0.3 && Math.sign(dl) === Math.sign(dr);   // 통째로 가로 이동
+      const moveY = Math.abs(dt) > 0.3 && Math.abs(db) > 0.3 && Math.sign(dt) === Math.sign(db);   // 통째로 세로 이동
+      if (moveX) line((dl > 0 ? p.left : p.left + p.width) - t / 2, top, t, bottom - top);
+      else if (Math.abs(dr) > 0.3) line(p.left + p.width - t / 2, top, t, bottom - top);
+      else if (Math.abs(dl) > 0.3) line(p.left - t / 2, top, t, bottom - top);
+      if (moveY) line(left, (dt > 0 ? p.top : p.top + p.height) - t / 2, right - left, t);
+      else if (Math.abs(db) > 0.3) line(left, p.top + p.height - t / 2, right - left, t);
+    });
+
+    /* 움직이는 박스에서 열 발생 */
+    sources.forEach((rgb, el) => {
+      if (!el.isConnected) { sources.delete(el); return; }
+      const v = visibleRect(el);
+      if (v.width < 1 || v.height < 1) return;
+      addSideHeat(v, THERMAL.bodyHeat, rgb);
+      if (el._pushHeat) return;                                  // 호버로 밀리는 박스는 면 열만
+      const ew = v.full.width * THERMAL.edgeWidth;
+      const edgeX = el.classList.contains('anim-out') ? v.left : v.left + v.width;   // 밀리고 있는 쪽 가장자리
+      addSideHeat({ left: edgeX - ew / 2, top: v.top, width: ew, height: v.height }, THERMAL.edgeHeat, rgb);
+    });
+
+    /* 식히고 퍼뜨리기 */
+    let max = 0;
+    const k = THERMAL.decay, kc = THERMAL.decay;
+    for (let i = 0; i < temp.length; i++) {
+      temp[i] *= kc; htemp[i] *= THERMAL.trailDecay;
+      const s = temp[i] + htemp[i]; if (s > max) max = s;
+      cr[i] *= k; cg[i] *= k; cb[i] *= k; cw[i] *= k;
+    }
+    diffuse(temp);                                     // 잔상 선(htemp)은 퍼뜨리지 않음 → 얇게 유지
+    if (THERMAL.mode === 'box') { diffuseH(cr); diffuseH(cg); diffuseH(cb); diffuseH(cw); }
+
+    /* 그리기: 박스 잔상(htemp)과 마우스 자국(temp)을 각자의 캔버스에. 온도가 낮은 곳은 투명 */
+    const [a0, a1] = THERMAL.fadeIn;
+    const pick = (i, v) => {
+      const nv = v + (Math.random() - 0.5) * 0.008;
+      return THERMAL.mode === 'box' ? boxColor(i, v) : THERMAL.mode === 'white' ? whiteHot(nv) : thermalColor(nv);
+    };
+    for (let i = padRows * fw, p = 0, end = (padRows + visRows) * fw; i < end; i++, p += 4) {
+      const hv = Math.min(1, htemp[i]);
+      if (hv < a0) px[p + 3] = 0;
+      else { const c = pick(i, hv); px[p] = c[0]; px[p + 1] = c[1]; px[p + 2] = c[2]; px[p + 3] = 255 * THERMAL.maxAlpha * smooth(a0, a1, hv); }
+      const mv = Math.min(1, temp[i]);
+      if (mv < a0) mpx[p + 3] = 0;
+      else { const c = thermalColor(mv + (Math.random() - 0.5) * 0.008); mpx[p] = c[0]; mpx[p + 1] = c[1]; mpx[p + 2] = c[2]; mpx[p + 3] = 255 * THERMAL.mouseAlpha * smooth(a0, a1, mv); }
+    }
+    colorCtx.putImageData(image, 0, 0);
+    mColorCtx.putImageData(mImage, 0, 0);
+    for (const [c2, src] of [[ctx, colorCanvas], [mctx, mColorCanvas]]) {
+      c2.clearRect(0, 0, W, H);
+      c2.imageSmoothingEnabled = true;
+      c2.imageSmoothingQuality = 'high';
+      c2.drawImage(src, 0, 0, fw, visRows, 0, 0, W, H);
+    }
+
+    /* 열이 다 식고 움직이는 박스도 없으면 멈춤 (배터리 절약) */
+    if (!sources.size && !movers.size && !warming && max < 0.004) { [temp, htemp, cr, cg, cb, cw].forEach(a => a.fill(0)); ctx.clearRect(0, 0, W, H); mctx.clearRect(0, 0, W, H); running = false; return; }
+    requestAnimationFrame(frame);
+  }
+
+  function wake() {
+    if (running) return;
+    running = true;
+    lastScroll = scrollY; scrollAcc = 0;
+    requestAnimationFrame(frame);
+  }
+
+  resize();
+  addEventListener('resize', resize);
+
+  return {
+    /* 밀려나거나 들어오는 요소를 애니메이션이 끝날 때까지 열원으로 등록 */
+    /* 커지거나 밀리는 아이템을 움직임이 끝날 때까지 추적 */
+    move(el, ms) {
+      const m = movers.get(el);
+      movers.set(el, { prev: m ? m.prev : itemRect(el), until: performance.now() + ms });
+      wake();
+    },
+    track(el, rgb, until = 'animation') {
+      sources.set(el, rgb);
+      const type = until === 'translate' ? 'transitionend' : 'animationend';
+      el._pushHeat = until === 'translate';
+      clearTimeout(el._heatStop);
+      el.addEventListener(type, function done(e) {
+        if (e.target !== el || (type === 'transitionend' && e.propertyName !== 'translate')) return;
+        sources.delete(el);
+        el.removeEventListener(type, done);
+      });
+      el._heatStop = setTimeout(() => sources.delete(el), HOVER.duration + 200);   // 안전장치
+      wake();
+    },
+  };
+})();
+
+/* ───────── 구간 전환 ─────────
+   section 0 = 1~8행, 1 = 9~16행, 2 = 17~24행 … */
+let section = -1;
+
+function showSection(sec) {
+  const first = section === -1;
+  section = sec;
+  const base = sec * CONFIG.sectionRows;
+  while (rowCount < base + CONFIG.sectionRows + CONFIG.batchRows) addRows(CONFIG.batchRows);
+
+  /* 1) 지금 박스들의 복제본을 제자리에 남겨 옆으로 밀리듯 닫음 */
+  if (!first) {
+    BOXES.forEach((b, i) => partsOf(b).forEach(el => {
+      const ghost = el.cloneNode(true);
+      ghost.style.pointerEvents = 'none';
+      ghost.style.setProperty('--delay', `${i * CONFIG.stagger}ms`);
+      ghost.classList.remove('anim-in');
+      ghost.classList.add('anim-out');
+      setTimeout(() => ghost.remove(), i * CONFIG.stagger + 850);      // 다 작아지면 제거
+      el.after(ghost);
+    }));
+  }
+
+  /* 2) 새 구간에 새 배치·새 색 */
+  flow.reset();                                           // 커지고 흘러가던 것들은 원래대로
+  doors[0].reset();                                       // 문은 닫힌 상태로 이동
+  layoutBoxes();
+  const colors = shuffle([...PALETTE]).slice(0, BOXES.length).map(hexToRgb);
+  BOXES.forEach((b, i) => {
+    const row = b.row + base;
+    if (b.id === 'door') {
+      doors[0].wrap.classList.add('nt'); holeEl.classList.add('nt');   // 새 구간으로는 전환 없이 바로 이동
+      doors[0].wrap.style.setProperty('--w', b.w); doors[0].wrap.style.setProperty('--h', b.h);
+      doors[0].wrap.style.setProperty('--col', b.col);
+      doors[0].wrap.style.setProperty('--row', row);
+      positionHole(b.col, row);
+      [doors[0].wrap, holeEl].forEach(el => Object.assign(el.dataset, { r: row, c: b.col, w: b.w, h: b.h }));
+      doors[0].wrap.offsetWidth;
+      doors[0].wrap.classList.remove('nt'); holeEl.classList.remove('nt');
+      applyColor(holeEl, colors[i]);
+    } else {
+      b.el.classList.add('nt');
+      setBoxRect(b.el, { c: b.col, r: row, w: b.w, h: b.h });
+      b.el.classList.remove('shrunk');
+      Object.assign(b.el.dataset, { r: row, c: b.col, w: b.w, h: b.h });
+      b.el.offsetWidth;
+      b.el.classList.remove('nt');
+      applyColor(b.el, colors[i]);
+    }
+  });
+
+  /* 등장·퇴장 기준 꼭짓점: 화면 가운데보다 오른쪽이면 오른쪽 위 */
+  BOXES.forEach(b => {
+    const right = b.col + (b.w - 1) / 2 > (CONFIG.cols + 1) / 2;
+    partsOf(b).forEach(el => el.classList.toggle('from-right', right));
+  });
+
+  /* 3) 새 박스들이 차례로 밀리듯 등장 */
+  shuffle(BOXES.map((b, i) => i)).forEach((i, k) => partsOf(BOXES[i]).forEach(el => {
+    el.classList.remove('anim-in');
+    void el.offsetWidth;
+    el.style.setProperty('--delay', `${(first ? 0 : 250) + k * CONFIG.stagger}ms`);
+    el.classList.add('anim-in');
+  }));
+}
+
+/* 스크롤 위치로 현재 구간 판단: 박스 영역이 절반쯤 화면 위로 넘어가면 다음 구간으로
+   → 박스가 아직 보이는 동안 밀려나서, 떠난 자리의 잔상이 보임 */
+function watchScroll() {
+  let ticking = false;
+  addEventListener('scroll', () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      ticking = false;
+      const cell = innerWidth / CONFIG.cols;
+      const sectionH = cell * CONFIG.sectionRows;
+      const offset = cell * CONFIG.boxRows * CONFIG.switchAt;
+      const sec = Math.max(0, Math.floor((scrollY - offset) / sectionH) + 1);
+      if (sec !== section) showSection(sec);
+    });
+  }, { passive: true });
+}
+
+/* ───────── 인터페이스 칸: 랜덤으로 섞은 순서가 일정하게 반복 ───────── */
+let ORDER = [];
+let rowCount = 0, cellCount = 0;
 
 function addRows(count) {
   const frag = document.createDocumentFragment();
   for (let i = 0; i < count; i++) {
     rowCount++;
     for (let c = 1; c <= CONFIG.cols; c++) {
-      if (isSlot(rowCount, c) || isHole(rowCount, c)) continue;
-      frag.appendChild(makeCell(rowCount, c));
+      const cell = document.createElement('div');
+      cell.className = `cell im-${ORDER[cellCount++ % ORDER.length]}`;
+      cell.style.gridRow = rowCount;
+      cell.style.gridColumn = c;
+      Object.assign(cell.dataset, { r: rowCount, c, w: 1, h: 1 });
+      frag.appendChild(cell);
     }
   }
   grid.appendChild(frag);
-}
-
-/* 흩어진 개요 텍스트 (버전 1) */
-function placeScattered() {
-  SCATTERED.forEach(t => {
-    const el = document.createElement('div');
-    el.className = 'text';
-    el.style.gridRow = t.row;
-    el.style.gridColumn = `${t.col} / span ${t.span}`;
-    el.innerHTML = `<p>${SENTENCES[t.s]}</p>`;
-    grid.appendChild(el);
-  });
-}
-
-/* 문 안쪽 검은 칸 + 텍스트박스 (버전 2, 3) */
-function placeHoles() {
-  LAYOUT.doors.filter(d => d.hole).forEach(d => {
-    const el = document.createElement('div');
-    el.className = 'hole';
-    /* 검은 판은 문짝 자리에만 (문틀 주변으론 이미지 칸이 그대로 보임) */
-    el.style.setProperty('--s', `calc(var(--cell) * ${d.w} / 895)`);
-    Object.assign(el.style, {
-      position: 'absolute', zIndex: 2,
-      left:   `calc(var(--cell) * ${d.col - 1} + var(--s) * 53)`,
-      top:    `calc(var(--cell) * ${d.row - 1} + var(--s) * 50)`,
-      width:  `calc(var(--cell) * ${d.w} - var(--s) * 105)`,
-      height: `calc(var(--cell) * ${d.h} - var(--s) * 50)`,
-    });
-    el.innerHTML = `<div class="copy">${d.texts.map(i => `<p>${SENTENCES[i]}</p>`).join('')}</div>`;
-    grid.appendChild(el);
-  });
-}
-
-/* ───────── 버전 1: 문 밖 텍스트의 순차 공개 ───────── */
-let revealed = false;
-let cascade = [];
-
-function runCascade(show) {
-  revealed = show;
-  const order = show ? cascade : [...cascade].reverse();
-  order.forEach((item, i) => {
-    item.el.style.transitionDelay = `${i * CONFIG.stagger}ms`;
-    item.el.classList.toggle('gone', show);
-  });
 }
 
 /* ───────── 문 ───────── */
@@ -532,7 +1120,25 @@ function buildDoor(d) {
     label.classList.toggle('on', !!text);
   };
 
+  /* 마우스가 문 위에 있으면 들어오자마자 쿵쿵, 이후 2초마다 쿵쿵 (닫혀 있을 때만) */
+  const KNOCK_EVERY = 2000;
+  let knockTimer = null;
+  const knock = () => {
+    if (state.open || state.drag || door3d.classList.contains('rattle')) return;
+    door3d.classList.remove('knock');
+    void door3d.offsetWidth;
+    door3d.classList.add('knock');
+  };
+  wrap.addEventListener('pointerenter', () => {
+    knock();
+    clearInterval(knockTimer);
+    knockTimer = setInterval(knock, KNOCK_EVERY);
+  });
+  wrap.addEventListener('pointerleave', () => { clearInterval(knockTimer); knockTimer = null; });
+  door3d.addEventListener('animationend', e => { if (e.animationName === 'knock') door3d.classList.remove('knock'); });
+
   const rattle = () => {
+    door3d.classList.remove('knock');
     door3d.classList.remove('rattle');
     sign.classList.remove('flash');
     void door3d.offsetWidth;
@@ -542,15 +1148,25 @@ function buildDoor(d) {
 
   const openDoor = () => {
     state.open = true;
+    state.openedAt = performance.now();
+    if (holeEl) holeEl.classList.add('closable');
     wrap.classList.add('open');
     showLabel(null);
     snapTo(OPEN_DEG);
-    if (LAYOUT.scattered) setTimeout(() => runCascade(true), 450);
+  };
+
+  state.reset = () => {                                   // 애니메이션 없이 닫힌 상태로
+    stopFollow();
+    state.open = false; state.drag = null; state.closeDrag = null;
+    if (holeEl) holeEl.classList.remove('closable');
+    wrap.classList.remove('open', 'dragging', 'snapping');
+    setRot(0);
   };
 
   state.close = () => {
     if (!state.open) return;
     state.open = false;
+    if (holeEl) holeEl.classList.remove('closable');
     wrap.classList.remove('open');
     snapTo(0);
   };
@@ -565,7 +1181,7 @@ function buildDoor(d) {
   wrap.addEventListener('pointermove', e => {
     label.style.left = e.clientX + 'px';
     label.style.top  = e.clientY + 'px';
-    if (state.open && !state.closeDrag) showLabel(e.target.closest('.face') ? '닫기 →' : null);
+    if (state.open) showLabel('닫기');
   });
 
   /* ───── 드래그 ─────
@@ -632,77 +1248,301 @@ function buildDoor(d) {
     });
   });
 
-  /* 열린 문짝: 잡고 오른쪽으로 끌면 닫힘 (클릭만 해도 닫힘) */
-  const CLOSE_AT = 40;       // 열린 상태에서 이만큼(도) 끌어 닫고 놓으면 끝까지 닫힘
-  wrap.querySelectorAll('.face').forEach(face => {
-    face.addEventListener('pointerdown', e => {
-      if (!state.open) return;
-      face.setPointerCapture(e.pointerId);
-      state.closeDrag = { x0: e.clientX, dx: 0, w: wrap.querySelector('.opening').offsetWidth };
-      cur = target = OPEN_DEG;
-      wrap.classList.remove('snapping');
-      wrap.classList.add('dragging');
+  /* 열린 문: 문짝·문틀·안쪽 텍스트 박스 어디든 클릭하면 닫힘 */
+  const closeOnClick = () => {
+    if (!state.open || performance.now() - state.openedAt < 400) return;   // 여는 클릭이 곧바로 닫기로 이어지지 않게
+    showLabel(null);
+    state.close();
+  };
+  wrap.addEventListener('click', closeOnClick);
+  if (holeEl) {
+    holeEl.addEventListener('click', closeOnClick);
+    holeEl.addEventListener('pointermove', e => {
+      label.style.left = e.clientX + 'px';
+      label.style.top  = e.clientY + 'px';
+      if (state.open) showLabel('닫기');
     });
-    face.addEventListener('pointermove', e => {
-      const d = state.closeDrag;
-      if (!d) return;
-      d.dx = Math.max(0, e.clientX - d.x0);             // 왼→오 방향만
-      pullTo(Math.min(0, OPEN_DEG + (d.dx / d.w) * PULL_GAIN));   // 열 때처럼 무겁게 뒤따라옴
-      showLabel('닫기 →');
-    });
-    const end = () => {
-      const d = state.closeDrag;
-      if (!d) return;
-      state.closeDrag = null;
-      stopFollow();
-      const travel = (d.dx / d.w) * PULL_GAIN;
-      if (d.dx <= 4 || travel >= CLOSE_AT) {           // 클릭 또는 충분히 끌었으면 닫기
-        showLabel(null);
-        state.close();
-      } else {
-        snapTo(OPEN_DEG);                              // 덜 끌었으면 다시 열림
-      }
-    };
-    face.addEventListener('pointerup', end);
-    face.addEventListener('pointercancel', end);
-  });
+    holeEl.addEventListener('pointerleave', () => { if (state.open) showLabel(null); });
+  }
   wrap.querySelector('.door3d').style.touchAction = 'none';
   doors.push(state);
 }
 
-/* ───────── 시작 ───────── */
-(async function init() {
-  await prepareImages();
-  if (DOOR_RANDOM) LAYOUT.doors.forEach(randomizeDoor);
 
-  placeSlots();
-  if (LAYOUT.scattered) placeScattered();
-  placeHoles();
-  addRows(CONFIG.batchRows);
-  LAYOUT.doors.forEach(buildDoor);
+/* ───────── 호버: 박스 하나가 커지면 나머지 박스는 작아짐 ─────────
+   - 호버한 박스(문 포함): 가로 한 칸, 세로 한 칸 커짐 (화면 가운데 기준 왼쪽은 오른쪽으로, 오른쪽은 왼쪽으로 / 아래로)
+   - 나머지 박스: SHRINK 규칙대로 작아짐. 커진 박스 쪽 변을 거둬들임. 글자는 박스 모서리를 따라 모였다 퍼짐
+   - 사진 칸: 처음부터 모든 칸에 깔려 있고 움직이지 않음 (박스가 작아지면 밑의 사진이 그대로 보임)
+   - 마우스가 박스를 벗어나면 모두 원래대로 */
+const HOVER = {
+  duration: 1100,   // 커지고 작아지고 흘러가는 속도 (ms)
+};
+document.documentElement.style.setProperty('--hd', HOVER.duration + 'ms');
 
-  /* 버전 1: 문 안에 들어간 덮개 칸은 미리 걷어둠, 나머지는 순차 공개 대상 */
-  if (LAYOUT.scattered) {
-    covers.sort((a, b) => a.r - b.r || a.c - b.c);
-    covers.forEach(item => {
-      if (LAYOUT.doors.some(d => inRect(item.r, item.c, d))) {
-        item.el.classList.add('instant', 'gone');
-      } else {
-        cascade.push(item);
+function setBoxRect(el, r) {
+  el.style.setProperty('--c', r.c); el.style.setProperty('--r', r.r);
+  el.style.setProperty('--w', r.w); el.style.setProperty('--h', r.h);
+}
+
+/* 다른 박스가 커질 때 줄어드는 크기 [가로, 세로] */
+const SHRINK = {
+  door:    o => [o.w - 1, o.h - 1],   // 문: 한 칸씩 작아짐 (3×5 → 2×4)
+  explore: () => [2, 1],              // 탐색: 가로 두 칸
+  article: () => [2, 1],              // 아티클: 가로 두 칸
+  all:     () => [1, 1],              // 전체: 두 칸 → 한 칸
+  name:    () => [3, 1],              // 해봐야 아는 것들: 가로 세 칸
+};
+
+/* ───────── 사진 히트맵 (칸마다 온도) ───────── */
+const CELLHEAT = {
+  rise: 0.06,      // 호버 중 달아오르는 속도 (1/60초마다 최고 온도에 다가가는 비율)
+  cool: 0.992,     // 떠난 뒤 1/60초마다 남는 온도 비율 (1에 가까울수록 천천히 식음, 0.992 ≈ 8초에 걸쳐 사라짐)
+  fadeBelow: 0.25, // 이 온도 아래로 내려가면 사진으로 스르르 사라짐
+  base: 0.7, span: 0.5, curve: 0.8,   // 온도(0~1) → 밝기 (최고 1.2). 높이면 하얗게 날아가고, 낮추면 어두워짐
+  floor: 0.28,     // 가장 어두운 곳의 색 (0 = 검정, 0.28 = 파랑, 0.4 = 보라). 올릴수록 전체가 밝고 따뜻해짐
+  /* 색 단계의 밝기는 SVG 필터 thermalHot(1.1)·thermalWarm(0.85)·thermalCool(0.6)의 feColorMatrix 값 */
+};
+/* 열화상 색표 (SVG thermalMap과 같은 값): 밝기 0~1 → 색 */
+const THERMAL_LUT = (() => {
+  const R = [0.020,0.026,0.033,0.039,0.065,0.092,0.118,0.235,0.353,0.471,0.647,0.824,1,1,1,1,1,1,1,1,1];
+  const G = [0.020,0.039,0.059,0.078,0.105,0.131,0.157,0.131,0.105,0.078,0.105,0.131,0.157,0.327,0.497,0.667,0.765,0.863,0.961,0.980,1];
+  const B = [0.078,0.170,0.261,0.353,0.523,0.693,0.863,0.758,0.654,0.549,0.379,0.209,0.039,0.039,0.039,0.039,0.039,0.039,0.039,0.520,1];
+  const lut = new Uint8ClampedArray(1024 * 3);
+  const at = (tb, x) => { const f = x * (tb.length - 1), i = Math.min(tb.length - 2, Math.floor(f)); return tb[i] + (f - i) * (tb[i + 1] - tb[i]); };
+  for (let i = 0; i < 1024; i++) { const x = i / 1023; lut[i * 3] = at(R, x) * 255; lut[i * 3 + 1] = at(G, x) * 255; lut[i * 3 + 2] = at(B, x) * 255; }
+  return lut;
+})();
+
+const cellHeat = (() => {
+  const temps = new Map();   // 칸 → { t, ... }
+  const lumCache = new Map();   // 사진 번호·크기 → 밝기 배열
+  let hot = null, running = false;
+  let canvasOK = true;          // file://로 열면 브라우저가 사진 픽셀을 못 읽게 막음 → 레이어 방식으로 대체
+  const grid = document.getElementById('grid');
+  const smooth = (e0, e1, v) => { let x = (v - e0) / (e1 - e0); x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
+  const imgOf = c => { const m = /im-(\d+)/.exec(c.className); return m && IMAGES.find(x => x.n === +m[1]); };
+
+  /* 사진의 밝기(0~1)를 칸 크기로 한 번만 계산해 둠 (background-size: cover와 같게 잘라서) */
+  function luminance(entry, size) {
+    const key = entry.n + ':' + size;
+    if (lumCache.has(key)) return lumCache.get(key);
+    const cv = document.createElement('canvas'); cv.width = cv.height = size;
+    const cx = cv.getContext('2d', { willReadFrequently: true });
+    const im = entry.img, iw = im.naturalWidth, ih = im.naturalHeight, s = Math.min(iw, ih);
+    cx.drawImage(im, (iw - s) / 2, (ih - s) / 2, s, s, 0, 0, size, size);
+    const d = cx.getImageData(0, 0, size, size).data;   // file://이면 여기서 에러
+    const lum = new Float32Array(size * size);
+    for (let i = 0, p = 0; i < lum.length; i++, p += 4) lum[i] = (0.2126 * d[p] + 0.7152 * d[p + 1] + 0.0722 * d[p + 2]) / 255;
+    lumCache.set(key, lum);
+    return lum;
+  }
+
+  function warmCanvas(c) {
+    const entry = imgOf(c);
+    if (!entry) return null;
+    const size = Math.round(c.getBoundingClientRect().width * Math.min(devicePixelRatio || 1, 1.5));
+    const lum = luminance(entry, size);
+    const cv = document.createElement('canvas');
+    cv.className = 'heatc'; cv.width = cv.height = size;
+    c.appendChild(cv);
+    const cx = cv.getContext('2d');
+    return { t: 0, drawn: -1, lum, cv, cx, img: cx.createImageData(size, size) };
+  }
+  function warmLayers(c) {
+    const layers = ['h-cool', 'h-warm', 'h-hot'].map(k => {
+      const d = document.createElement('div');
+      d.className = 'heat ' + k;
+      c.appendChild(d);
+      return d;
+    });
+    return { t: 0, layers };
+  }
+  function warmUp(c) {
+    let h = null;
+    if (canvasOK) { try { h = warmCanvas(c); } catch (err) { canvasOK = false; } }
+    if (!h) h = warmLayers(c);
+    temps.set(c, h);
+  }
+
+  /* 캔버스: 온도에 따라 밝기를 낮춰 색표에서 색을 고름 (흰·노랑 → 주황 → 빨강 → 보라 → 파랑), 끝에 투명해짐 */
+  function paint(h) {
+    const t = h.t;
+    const q = Math.round(t * 400);
+    if (q === h.drawn) return;          // 눈에 띄는 변화가 없으면 다시 그리지 않음
+    h.drawn = q;
+    const bright = CELLHEAT.base + CELLHEAT.span * Math.pow(t, CELLHEAT.curve);
+    const alpha = 255 * smooth(0.02, CELLHEAT.fadeBelow, t);
+    const px = h.img.data, lum = h.lum, floor = CELLHEAT.floor;
+    for (let i = 0, p = 0; i < lum.length; i++, p += 4) {
+      let v = lum[i] * bright; if (v > 1) v = 1;
+      v = floor + (1 - floor) * v;                     // 검정도 파랑으로 보이게 색표 아래쪽을 건너뜀
+      const j = ((v * 1023) | 0) * 3;
+      px[p] = THERMAL_LUT[j]; px[p + 1] = THERMAL_LUT[j + 1]; px[p + 2] = THERMAL_LUT[j + 2]; px[p + 3] = alpha;
+    }
+    h.cx.putImageData(h.img, 0, 0);
+  }
+  function layers(h) {
+    const [cool, warm, hotL] = h.layers, t = h.t;
+    cool.style.opacity = smooth(0.02, CELLHEAT.fadeBelow, t).toFixed(3);
+    warm.style.opacity = smooth(CELLHEAT.fadeBelow, 0.55, t).toFixed(3);
+    hotL.style.opacity = smooth(0.55, 0.95, t).toFixed(3);
+  }
+
+  grid.addEventListener('pointerover', e => {
+    const c = e.target.closest('.cell');
+    hot = c;
+    if (c && !temps.has(c)) warmUp(c);
+    if (c && !running) { running = true; requestAnimationFrame(tick); }
+  });
+  grid.addEventListener('pointerleave', () => { hot = null; });
+  let last = 0;
+  function tick(now) {
+    const k = last ? Math.min(4, (now - last) / 16.67) : 1;   // 프레임 속도와 상관없이 같은 시간에 식도록
+    last = now;
+    temps.forEach((h, c) => {
+      if (c === hot) h.t += (1 - h.t) * (1 - Math.pow(1 - CELLHEAT.rise, k));
+      else h.t *= Math.pow(CELLHEAT.cool, k);
+      if (!c.isConnected || (c !== hot && h.t < 0.02)) {
+        temps.delete(c);
+        if (h.cv) h.cv.remove(); else h.layers.forEach(d => d.remove());
+        return;
+      }
+      if (h.cv) paint(h); else layers(h);
+    });
+    if (temps.size) requestAnimationFrame(tick); else { running = false; last = 0; }
+  }
+})();
+
+const flow = (() => {
+  let active = null;
+
+  const base = () => section * CONFIG.sectionRows;
+  const orig = b => ({ c: b.col, r: b.row + base(), w: b.w, h: b.h });
+  const boxOfEl = el => el.classList.contains('hole') || el === doors[0].wrap
+    ? BOXES.find(b => b.id === 'door') : BOXES.find(b => b.el === el);
+
+  /* 각 박스의 목표 사각형 */
+  function targetRects(hb) {
+    const res = new Map();
+    BOXES.forEach(b => res.set(b, orig(b)));
+    if (!hb) return res;
+    const H = orig(hb);
+    const toRight = H.c + (H.w - 1) / 2 <= (CONFIG.cols + 1) / 2;
+    const G = { c: toRight ? H.c : H.c - 1, r: H.r, w: H.w + 1, h: H.h + 1 };
+    res.set(hb, G);
+    const gx = G.c + (G.w - 1) / 2, gy = G.r + (G.h - 1) / 2;
+    BOXES.forEach(b => {
+      if (b === hb) return;
+      const o = orig(b), n = { ...o };
+      const [sw, sh] = SHRINK[b.id](o);                                   // 줄어든 뒤 크기
+      /* 줄어들 때도 늘 같은 꼭짓점 기준: 왼쪽 박스는 왼쪽 위, 오른쪽 박스는 오른쪽 위에 붙은 채로 */
+      const right = o.c + (o.w - 1) / 2 > (CONFIG.cols + 1) / 2;
+      if (right && sw < o.w) n.c += o.w - sw;
+      /* 예외: 그렇게 줄였는데도 커진 박스와 겹치면 커진 박스 반대쪽으로 비켜서 줄어듦 */
+      const hit = (x, y) => x.c < y.c + y.w && y.c < x.c + x.w && x.r < y.r + y.h && y.r < x.r + x.h;
+      if (hit({ ...n, w: sw, h: sh }, G)) {
+        n.c = o.c; n.r = o.r;
+        if (sw < o.w && o.c + (o.w - 1) / 2 >= gx) n.c += o.w - sw;
+        if (sh < o.h && o.r + (o.h - 1) / 2 >= gy) n.r += o.h - sh;
+      }
+      n.w = sw; n.h = sh;
+      res.set(b, n);
+    });
+    return res;
+  }
+
+  /* 문 크기·위치 */
+  function setDoor(n) {
+    const wrap = doors[0].wrap;
+    wrap.style.setProperty('--col', n.c); wrap.style.setProperty('--row', n.r);
+    wrap.style.setProperty('--w', n.w);   wrap.style.setProperty('--h', n.h);
+    holeEl.style.setProperty('--s', `calc(var(--cell) * ${n.w} / 895)`);
+    holeEl.style.width  = `calc(var(--cell) * ${n.w} - var(--s) * 105)`;
+    holeEl.style.height = `calc(var(--cell) * ${n.h} - var(--s) * 50)`;
+    positionHole(n.c, n.r);
+  }
+
+  function applyBoxes(rects) {
+    BOXES.forEach(b => {
+      const n = rects.get(b);
+      if (b.id === 'door') setDoor(n);
+      else {
+        setBoxRect(b.el, n);
       }
     });
   }
+
+  /* 사진은 처음부터 모든 칸에 깔려 있고 움직이지 않음. 박스만 그 위에서 커지고 작아짐 */
+
+  function activate(b) {
+    active = b;
+    const rects = targetRects(b);
+    applyBoxes(rects);
+  }
+  /* 커졌던 박스는 반대 꼭짓점을 기준으로 줄어듦 → 원래 크기로 돌아가되 한 칸 대각선으로 옮겨감
+     (화면 가장자리·구간 아래 끝에 닿거나 다른 박스와 겹치면 원래 자리로) */
+  function settle(b) {
+    const H = orig(b);
+    const toRight = H.c + (H.w - 1) / 2 <= (CONFIG.cols + 1) / 2;
+    const next = { col: b.col + (toRight ? 1 : -1), row: b.row + 1, w: b.w, h: b.h };
+    const inside = next.col >= 1 && next.col + next.w - 1 <= CONFIG.cols && next.row >= 1 && next.row + next.h - 1 <= CONFIG.boxRows;
+    const clear = BOXES.every(o => o === b || !conflicts(next, o));
+    if (inside && clear) { b.col = next.col; b.row = next.row; }
+  }
+
+  function deactivate() {
+    if (!active) return;
+    const b = active;
+    active = null;
+    /* 대각선으로 옮겨가던 동작은 폐기: 커졌던 꼭짓점 그대로 원래 크기로 줄어듦 */
+    const rects = targetRects(null);
+    applyBoxes(rects);
+    BOXES.forEach(x => {                                               // 바뀐 자리 기록 (다음 호버·등장 기준)
+      const r = rects.get(x);
+      partsOf(x).forEach(el => Object.assign(el.dataset, { r: r.r, c: r.c, w: r.w, h: r.h }));
+      const right = x.col + (x.w - 1) / 2 > (CONFIG.cols + 1) / 2;
+      partsOf(x).forEach(el => el.classList.toggle('from-right', right));
+    });
+  }
+
+  grid.addEventListener('pointerover', e => {
+    const el = e.target.closest('.box, .door-wrap, .hole');
+    if (el && !el.classList.contains('anim-out')) {
+      const b = boxOfEl(el);
+      if (b && b.id === 'door') deactivate();          // 문은 인터랙션이 있으니 호버로 커지지 않음 (쿵쿵은 그대로)
+      else if (b && b !== active) activate(b);
+    } else if (e.target.closest('.cell')) deactivate();
+  });
+  grid.addEventListener('pointerleave', deactivate);
+
+  return {
+    reset() { active = null; },
+  };
+})();
+
+/* ───────── 시작 ───────── */
+(async function init() {
+  await prepareImages();
+
+  ORDER = shuffle(IMAGES.map(x => x.n));                 // 이번 방문의 사진 순서
+  addRows(CONFIG.batchRows);
+
+  const door = BOXES.find(b => b.id === 'door');
+  createBoxes();
+  createHole(door);
+  buildDoor({ ...door, col: 1, row: 1 });
+
+  showSection(0);
+  watchScroll();
 
   new IntersectionObserver(entries => {
     if (entries[0].isIntersecting) addRows(CONFIG.batchRows);
   }, { rootMargin: '1200px' }).observe(document.getElementById('sentinel'));
 
-  /* 프로젝트 네임: 맨 위로 + 열린 문 다시 닫기 */
-  document.getElementById('projectName').addEventListener('click', () => {
+  /* 프로젝트 네임: 맨 위로 + 열린 문 닫기 */
+  BOXES.find(b => b.id === 'name').el.addEventListener('click', () => {
+    doors.forEach(d => d.close());
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    if (LAYOUT.scattered && revealed) runCascade(false);
-    const wait = LAYOUT.scattered ? cascade.length * CONFIG.stagger + 450 : 0;
-    setTimeout(() => doors.forEach(d => d.close()), wait);
   });
 
   document.getElementById('loader').remove();
