@@ -4,334 +4,403 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>아티클 — 해봐야 아는 것들</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@v2.0/nanumsquare.css">
 <style>
+  /* ───────── 아티클 글 (web-rules.md 4-3) ─────────
+     검정 배경만 (사진 그리드·히트맵 없음). 가운데 한 단: 글 4칸, 사진은 4·6·8칸 중 사진마다.
+     왼쪽 여백에 작은 목차가 따라옴. 맨 아래 이전 글 / 다음 글 */
   :root {
-    --cols: 12;
-    --cell: calc(100vw / var(--cols));
+    --cell: calc(100vw / 12);
     --u: calc(100vw / 1920);
-    --gut:      calc(var(--u) * 30);   /* 박스 안쪽 거터 30 */
-    --pad:      calc(var(--u) * 40);   /* 글 블록 좌우 여백 40 */
-    --fs-title: calc(var(--u) * 25);
-    --fs-sub:   calc(var(--u) * 15);
-    --fs-head:  calc(var(--u) * 20);   /* 아티클 번호·제목 20 */
-    --fs-body:  calc(var(--u) * 15);   /* 본문 15 */
-    --lh-body:  calc(var(--u) * 20);   /* 본문 행간 20 */
+    --gut:  calc(var(--u) * 30);
+    --fs-l: calc(var(--u) * 25);         /* 큰 글자: 박스 이름, 소제목 */
+    --fs-s: calc(var(--u) * 15);         /* 작은 글자: 본문, 캡션, 목차 */
+    --lh-s: calc(var(--u) * 22);
+    --fs-xl: calc(var(--u) * 40);        /* 숫자 크기 = 글 제목 */
     --ease: cubic-bezier(.3, 0, .2, 1);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { background: #000; color: #fff; }
-  body { font-family: "Pretendard", -apple-system, sans-serif; overflow-x: hidden; }
+  body { font-family: "NanumSquare", -apple-system, sans-serif; font-weight: 300; word-break: keep-all; overflow-x: hidden; }
+  a { color: inherit; text-decoration: none; }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; text-align: left; }
+  #heat { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; }
+  .page { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(12, var(--cell)); grid-template-rows: auto auto auto 1fr; min-height: 100vh; }
 
-  /* ───────── 배경 사진 그리드 (홈과 같음: 단색 → 호버하면 원본) ───────── */
-  .grid {
-    position: relative;
-    display: grid;
-    grid-template-columns: repeat(var(--cols), var(--cell));
-    grid-auto-rows: var(--cell);
-  }
-  .cell { position: relative; contain: layout paint; }
-  .cell::before, .cell::after { content: ''; position: absolute; inset: 0; }
-  .cell::before { background: #111 var(--img) center / cover; }
-  .cell::after  { background: var(--solid, #222); transition: opacity .6s ease-out; pointer-events: none; }
-  .cell:hover::after { opacity: 0; transition: opacity .2s ease-out; }
+  /* 박스: 목차 페이지와 같음 (이름 2×1 왼쪽 위, 아티클 1×1 그 오른쪽) */
+  .box { position: relative; height: var(--cell); background: var(--bg); color: var(--fg); display: block; }
+  .box .t { position: absolute; left: var(--gut); top: var(--gut); font-size: var(--fs-l); line-height: 1; white-space: nowrap; }
+  .box .s { position: absolute; right: var(--gut); bottom: var(--gut); font-size: var(--fs-s); line-height: 1; white-space: nowrap; display: flex; gap: calc(var(--u) * 10); align-items: center; }
+  .box svg { width: calc(var(--u) * 16); height: calc(var(--u) * 16); }
+  .box.left .s { right: auto; left: var(--gut); }
+  .box.off { opacity: .35; pointer-events: none; }
+  .b-name { grid-column: 1 / span 2; grid-row: 1; }
+  .b-art  { grid-column: 3 / span 1; grid-row: 1; }
 
-  /* ───────── 고정 박스: 아티클(왼쪽 위 2×1) · 프로젝트 이름(오른쪽 위 2×2) ─────────
-     스크롤해도 늘 같은 자리. 색만 들어올 때마다 팔레트에서 랜덤 */
-  .nav {
-    position: fixed; top: 0; z-index: 20;
-    color: var(--box-fg);
-    text-decoration: none;
-  }
-  .nav-in { position: absolute; inset: 0; background: var(--box-bg); }
-  .nav-article { left: 0; width: calc(var(--cell) * 2); height: var(--cell); }
-  .nav-name    { right: 0; width: calc(var(--cell) * 2); height: calc(var(--cell) * 2); cursor: pointer; }
+  /* 제목부: 가운데 */
+  .head { grid-column: 4 / span 6; grid-row: 2; text-align: center; padding: var(--cell) 0 calc(var(--cell) * .75); }
+  .head .no   { font-size: var(--fs-l); line-height: 1; opacity: .6; }
+  .head h1    { font-weight: 300; font-size: var(--fs-xl); line-height: 1.3; margin-top: calc(var(--u) * 20); }
+  .head .meta { font-size: var(--fs-s); line-height: 1; opacity: .6; margin-top: calc(var(--u) * 24); }
 
-  /* 아티클 박스: 첫 칸 가운데에 화살표, 둘째 칸 가운데에 '아티클' */
-  .nav-article .arrows, .nav-article .title {
-    position: absolute; top: 0; height: 100%; width: var(--cell);
-    display: flex; align-items: center; justify-content: center;
-  }
-  .nav-article .arrows { left: 0; gap: calc(var(--u) * 8); }
-  .nav-article .title  { left: var(--cell); font-size: var(--fs-title); line-height: 1; }
-  .arrow {
-    width: calc(var(--u) * 28); height: calc(var(--u) * 28);
-    display: flex; align-items: center; justify-content: center;
-    background: none; border: 0; color: inherit; cursor: pointer;
-  }
-  .arrow svg { width: calc(var(--u) * 9); height: calc(var(--u) * 16); }
-  .arrow:disabled { opacity: .35; cursor: default; }   /* 이전·다음 글이 없을 때 */
-  .arrow:not(:disabled):hover svg { transform: translateX(calc(var(--u) * var(--dir, 0) * 3)); }
-  .arrow svg { transition: transform .2s var(--ease); }
+  /* 본문: 글 5~8칸(4칸), 사진은 가운데 정렬로 4·6·8칸 */
+  .flow { grid-column: 1 / -1; grid-row: 3; display: grid; grid-template-columns: repeat(12, var(--cell)); font-size: var(--fs-s); line-height: var(--lh-s); }
+  .flow > p, .flow > h2, .flow > .soon { grid-column: 5 / span 4; }
+  .flow > p + p { margin-top: var(--lh-s); }
+  .flow > h2 { font-weight: 300; font-size: var(--fs-l); line-height: 1.4; margin: calc(var(--lh-s) * 4) 0 var(--lh-s); scroll-margin-top: calc(var(--cell) * .9); }
+  .flow > h2 small { display: block; font-size: var(--fs-s); line-height: var(--lh-s); opacity: .6; margin-top: calc(var(--u) * 6); }
+  .flow > figure { margin: calc(var(--lh-s) * 2) 0; }
+  /* 섹션은 사진 → 소제목 → 글 순서: 사진이 섹션 첫머리라 위를 넓게, 소제목은 사진 바로 아래 */
+  .flow > figure:has(+ h2) { margin-top: calc(var(--lh-s) * 4); margin-bottom: calc(var(--lh-s) * 1.5); }
+  .flow > figure + h2 { margin-top: 0; }
+  .flow > figure.w4 { grid-column: 5 / span 4; }
+  .flow > figure.w6 { grid-column: 4 / span 6; }
+  .flow > figure.w8 { grid-column: 3 / span 8; }
+  figure img { width: 100%; display: block; aspect-ratio: var(--ar, 4 / 3); object-fit: cover; background: #111; }
+  figcaption { font-size: var(--fs-s); line-height: var(--lh-s); opacity: .6; margin-top: calc(var(--u) * 12); }
+  .soon { opacity: .6; text-align: center; padding: var(--cell) 0; }
 
-  .nav-name .title { position: absolute; left: var(--gut); top: var(--gut); font-size: var(--fs-title); line-height: 1; white-space: nowrap; }
-  .nav-name .sub   { position: absolute; right: var(--gut); bottom: var(--gut); font-size: var(--fs-sub); line-height: 1; white-space: nowrap; }
+  /* 왼쪽 목차: 1~2칸, 스크롤해도 따라옴. 지금 읽는 소제목이 진하게 */
+  .toc { grid-column: 1 / span 2; grid-row: 3; padding: 0 var(--gut); position: relative; z-index: 2; }
+  .toc ol { position: sticky; top: calc(var(--cell) * .9); list-style: none; font-size: var(--fs-s); line-height: var(--lh-s); }
+  .toc li + li { margin-top: calc(var(--u) * 10); }
+  .toc a { display: flex; gap: calc(var(--u) * 12); opacity: .45; transition: opacity .3s var(--ease); }
+  .toc a:hover, .toc a.on { opacity: 1; }
+  .toc b { font-weight: 300; min-width: calc(var(--u) * 18); }
 
-  /* ───────── 아티클 판 (가운데 8칸 × 필요한 만큼의 행, 검정) ───────── */
-  .panel {
-    position: absolute;
-    left: calc(var(--cell) * 2); top: var(--cell);
-    width: calc(var(--cell) * 8);
-    height: calc(var(--cell) * var(--rows, 6));
-    background: #000;
-    z-index: 5;
-    display: grid;
-    grid-template-columns: repeat(8, var(--cell));
-    grid-auto-rows: var(--cell);
-  }
-  .head {
-    grid-column: 1 / span 8; grid-row: 1;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: calc(var(--u) * 8);
-    font-size: var(--fs-head); line-height: 1;
-  }
-  .blk-img { position: relative; overflow: hidden; background: #111; }
-  .blk-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
-  .blk-text {
-    padding: 0 var(--pad);
-    font-size: var(--fs-body); line-height: var(--lh-body);
-    word-break: keep-all;
-    align-self: start;               /* 높이는 글만큼 (행 수 계산용) */
-  }
-  .blk-text.right { text-align: right; }
-  .soon { grid-column: 1 / span 8; grid-row: 2; align-self: center; text-align: center; font-size: var(--fs-body); opacity: .6; }
-  .nav-article .title { cursor: pointer; color: inherit; text-decoration: none; }
-  .blk-text p + p { margin-top: 0; }
-  .blk-text p.gap { margin-top: var(--lh-body); }   /* 소제목 앞 한 줄 띄움 */
+  /* 이전 글 / 다음 글: 본문 폭 아래 2×1 두 개 */
+  .pager { grid-column: 5 / span 4; grid-row: 4; align-self: end; display: grid; grid-template-columns: 1fr 1fr; margin-top: calc(var(--cell) * 1.5); }   /* 화면(페이지) 바닥에 닿음 */
 
-  /* ───────── 들어오고 나가기: 한 꼭짓점에서 커지고, 같은 꼭짓점으로 줄어듦 ───────── */
-  @keyframes inTL  { from { clip-path: inset(0 100% 100% 0); } to { clip-path: inset(0); } }
-  @keyframes inTR  { from { clip-path: inset(0 0 100% 100%); } to { clip-path: inset(0); } }
-  @keyframes outTL { from { clip-path: inset(0); } to { clip-path: inset(0 100% 100% 0); } }
-  @keyframes outTR { from { clip-path: inset(0); } to { clip-path: inset(0 0 100% 100%); } }
-  @keyframes fade  { from { opacity: 0; } to { opacity: 1; } }
-  .nav-article .nav-in, .panel { animation: inTL .8s var(--ease) both; }
-  .nav-name .nav-in            { animation: inTR .8s var(--ease) .09s both; }
-  .nav-article > :not(.nav-in), .nav-name > :not(.nav-in) { animation: fade .4s ease-out .6s both; }
-  .panel > * { animation: fade .5s ease-out .7s both; }
-  body.leaving .nav-article .nav-in, body.leaving .panel { animation: outTL .6s var(--ease) both; }
-  body.leaving .nav-name .nav-in { animation: outTR .6s var(--ease) both; }
-  body.leaving .nav > :not(.nav-in), body.leaving .panel > * { animation: fade .2s ease-out reverse both; }
+  /* 스크롤 메뉴: 메인·목차와 같음 (위쪽 정가운데, 살짝 띄움) */
+  .dock { position: fixed; z-index: 20; --float: calc(var(--u) * 24); top: var(--float); left: 50%; transform: translateX(-50%);
+          display: flex; flex-direction: column; align-items: center; filter: drop-shadow(0 calc(var(--u) * 4) calc(var(--u) * 10) rgba(0,0,0,.28)); pointer-events: none; }
+  .fab, .menu a, .menu button { width: calc(var(--cell) * 1.5); height: calc(var(--cell) / 2); background: var(--bg); color: var(--fg);
+          display: flex; align-items: center; justify-content: space-between; padding: 0 var(--gut); font-size: var(--fs-s); }
+  .fab { clip-path: inset(0 0 100% 0); transition: clip-path .5s var(--ease); pointer-events: auto; }
+  .fab:not(.show) { pointer-events: none; }
+  .fab.show { clip-path: inset(0); }
+  .fab svg { width: calc(var(--u) * 16); height: calc(var(--u) * 16); transition: transform .3s var(--ease); }
+  .fab.open svg { transform: rotate(180deg); }
+  .menu { display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+  .menu a, .menu button { clip-path: inset(0 0 100% 0); transition: clip-path .45s var(--ease) calc(var(--i) * 60ms); }
+  .menu.on { pointer-events: auto; }
+  .menu.on a, .menu.on button { clip-path: inset(0); }
+  .menu svg { width: calc(var(--u) * 14); height: calc(var(--u) * 14); }
 
-  @media (prefers-reduced-motion: reduce) { * { animation-duration: 1ms !important; } }
+  /* 들어올 때: 박스는 모서리에서 펼쳐지고 글은 서서히 */
+  .box { animation: boxIn .8s var(--ease) var(--delay, 0s) backwards; }
+  @keyframes boxIn { from { clip-path: inset(0 100% 100% 0); } to { clip-path: inset(0); } }
+  .head, .flow, .toc { animation: fade .6s ease-out .4s backwards; }
+  @keyframes fade { from { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; } }
+  /* ───────── 메뉴 = 햄버거 아이콘 (2026-10-14): 모든 페이지 같은 자리. 오른쪽 위, 화면 가장자리에서 24만큼 띄움 ─────────
+     누르면 아래로 메뉴가 펼쳐지고 아이콘은 ×로 바뀜 */
+  .dock { left: auto !important; right: calc(var(--u) * 24) !important; transform: none !important; align-items: flex-end !important; }
+  .fab { width: calc(var(--cell) / 2) !important; padding: 0 !important; justify-content: center !important; }
+  .fab svg { width: calc(var(--u) * 22) !important; height: calc(var(--u) * 22) !important; transform: none !important; }
+  .fab .i-x { display: none; }
+  .fab.open .i-x { display: block; }
+  .fab.open .i-ham { display: none; }
+  /* 맨 위로 ↑: 반 칸 이상 스크롤하면 화면 가운데 아래 (모든 페이지 공통, 메뉴와 같은 크기·간격·그림자) */
+  .to-top { position: fixed; z-index: 20; left: 50%; bottom: calc(var(--u) * 24); transform: translateX(-50%);
+            width: calc(var(--cell) / 2); height: calc(var(--cell) / 2); display: flex; align-items: center; justify-content: center;
+            background: var(--bg); color: var(--fg); border: 0; cursor: pointer; filter: drop-shadow(0 calc(var(--u) * 4) calc(var(--u) * 10) rgba(0,0,0,.28));
+            clip-path: inset(100% 0 0 0); transition: clip-path .5s var(--ease); pointer-events: none; }
+  .to-top.show { clip-path: inset(0); pointer-events: auto; }
+  .to-top svg { width: calc(var(--u) * 22); height: calc(var(--u) * 22); }
 </style>
 </head>
 <body>
-
-<main class="grid" id="grid">
-  <article class="panel" id="panel"></article>
-</main>
-
-<nav>
-  <div class="nav nav-article" id="navArticle">
-    <div class="nav-in"></div>
-    <div class="arrows">
-      <button class="arrow" id="prev" type="button" aria-label="이전 아티클" style="--dir:-1">
-        <svg viewBox="0 0 9 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1 1 8l7 7"/></svg>
-      </button>
-      <button class="arrow" id="next" type="button" aria-label="다음 아티클" style="--dir:1">
-        <svg viewBox="0 0 9 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="m1 1 7 7-7 7"/></svg>
-      </button>
-    </div>
-    <a class="title" id="toToc" href="articles.html" aria-label="아티클 목차">아티클</a>
-  </div>
-  <a class="nav nav-name" id="navName" href="index.html" aria-label="홈으로">
-    <div class="nav-in"></div>
-    <span class="title">해봐야 아는 것들</span>
-    <span class="sub">interface archiving</span>
-  </a>
-</nav>
-
+<canvas id="heat"></canvas>
+<div class="page" id="page"></div>
+<div class="dock">
+  <button class="fab" id="fab" type="button" aria-label="메뉴 열기"><svg class="i-ham" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 6h16M3 11h16M3 16h16"/></svg><svg class="i-x" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.2"><path d="m5 5 12 12M17 5 5 17"/></svg></button>
+  <nav class="menu" id="menu"></nav>
+</div>
+<button class="to-top" id="toTop" type="button" aria-label="맨 위로"><svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M11 19V3M4 10l7-7 7 7"/></svg></button>
 <script>
-/* ───────── 설정 ───────── */
-const CONFIG = {
-  imageCount: 64,
-  path: n => `images/A${String(n).padStart(4, '0')}.png`,
-  home: 'index.html',                 // 프로젝트 이름을 누르면 가는 곳 (홈을 거치지 않고 바로 들어왔을 때)
-  page: 'article.html',               // 이 파일 이름 (이전·다음 이동에 씀)
-  extraRows: 2,                       // 아티클 판 아래로 더 보이는 사진 줄 수
-};
-
-/* ───────── 아티클 목록 ─────────
-   blocks: 위에서부터 차례로 배치. 칸 번호는 가운데 판(8칸) 안에서 1~8
-   - img:  { src, col, w, h }       사진: col번째 칸부터 w칸 × h행 (칸에 꽉 차게 잘림)
-   - text: { col, w, align, paras } 글: col번째 칸부터 w칸. 높이는 글 길이에 맞춰 행 단위로 자동
-   한 블록 안의 사진과 글은 같은 행에서 시작하고, 블록 사이엔 한 행을 비움 */
+/* ═════════ 아티클 (목차 페이지 articles.html의 TOC와 번호·제목을 맞출 것) ═════════
+   blocks: 위에서부터 차례로
+   - 'string'                       → 문단
+   - { h: '소제목', en: '영문' }      → 소제목 (왼쪽 목차에 나옴. ':' 앞부분이 목차 이름)
+   섹션 순서: 사진 → 소제목 → 글 (사진이 섹션 맨 앞)
+   - { img, w: 4|6|8, cap, ar }      → 사진 (가운데 정렬, w칸 폭. ar = 가로/세로 비율, 기본 4/3) */
 const ARTICLES = [
-  { no: '01', title: '버튼의 탄생과 소멸', blocks: [] },
-  { no: '02', title: '발로 조작하는 것들', blocks: [] },
-  {
-    no: '03',
-    title: '트리거의 계보',
-    blocks: [
-      {
-        img:  { src: 'images/t1.png', col: 2, w: 4, h: 3 },
-        text: { col: 6, w: 3, align: 'left', paras: [
-          '인간의 손가락은 참으로 간사하면서도 매혹적인 도구다. 무언가를 누르는 ‘버튼(Button)’이 이성적인 결정의 영역이라면, 손가락을 걸고 지그시 잡아당기는 ‘트리거(Trigger)’는 지극히 본능적이고 역동적인 행위의 영역에 가깝다.',
-          '물건을 작동시키는 수많은 인터페이스 중에서도 ‘당기는 동작’에 최적화된 형태들은 오랜 시간 독자적인 진화를 거쳐왔다. 대표적인 세 선수, 총기의 방아쇠, 전동드릴, 그리고 분무기(스프레이 노즐)를 살펴보면 이들이 직업도, 족보도 다르면서 왜 하나같이 닮아 있는지 알 수 있다.',
-          { gap: true, t: '원조의 매운맛: 총기의 방아쇠 (Firearm Trigger)' },
-          '트리거라는 단어의 고향이자 ‘당김’의 미학을 완성한 원조다. 총기의 방아쇠는 검지손가락 마디에 착 감기는 완만한 곡선 형태를 띤다. 여기에 손가락이 미끄러지지 않도록 금속 표면에 미세한 톱니(Serrations)를 파놓기도 한다.',
-          '무엇보다 방아쇠의 핵심은 주변을 감싸고 있는 ‘방아쇠 울(Trigger Guard)’에 있다. 의도치 않은 외력에 작동하는 것을 막아주는 이 조그만 울타리는, 사용자로 하여금 “오직 내 검지손가락만이 이 공간의 지배자”라는 묘한 통제감을 선사한다. 당기는 순간 느껴지는 적절한 장력과 ‘깍’ 하고 넘어가는 작동감(Break)은 인류가 만든 가장 치명적이면서도 정교한 촉각 피드백 중 하나다.',
-        ] },
-      },
-      {
-        text: { col: 1, w: 4, align: 'right', paras: [
-          '현장의 마에스트로: 전동드릴의 건형 스위치 (Pistol Grip Switch)',
-          '건축 현장이나 DIY 가구 조립 현장에서 만나는 전동드릴은 총기의 형태를 가장 적극적으로 오마주한 산업용 인터페이스다. 형태는 총기의 방아쇠와 판박이지만, 내부 메커니즘은 훨씬 다정해졌다.',
-          '전동드릴의 트리거는 단순히 켜고 끄는(ON/OFF) 스위치가 아니다. 손가락을 살짝 당기면 나사가 천천히 돌고, 깊게 꽉 쥐어 당길수록 RPM이 가파르게 올라가는 ‘가변 속도 제어(Variable Speed Control)’ 역할을 한다. 묵직한 권총 손잡이(Pistol Grip)를 쥐고 검지 끝의 힘 조절만으로 모터의 출력을 자유자재로 지배할 때, 작업자는 순간적으로 유능한 마에스트로가 된 듯한 착각에 빠진다.',
-        ] },
-        img:  { src: 'images/t2.png', col: 5, w: 3, h: 2 },
-      },
-      {
-        text: { col: 4, w: 4, align: 'left', paras: [
-          '일상의 에이스: 스프레이 노즐 (Spray Trigger)',
-          '집 안 구석구석 분무기나 청소용 세제에서 만나는 스프레이 노즐은 가장 대중적이고 친숙한 형태다. 총이나 드릴과 달리, 한두 손가락이 아닌 검지와 중지 두 손가락을 동시에 걸칠 수 있도록 길쭉하게 늘려놓은 트리거가 특징이다.',
-          '액체를 피스톤으로 압축해 분사해야 하므로 제법 힘이 많이 들어가는 구조다. 따라서 손가락 하나의 힘에 의존하기보다, 두 손가락으로 레버를 통째로 움켜쥐듯 당기게 설계하여 지레의 원리를 극대화했다. 분무기를 칙칙 뿌릴 때의 경쾌한 반발력은 일상 속 반복 작업의 지루함을 덜어주는 의외의 청량감을 준다.',
-        ] },
-      },
-    ],
-  },
-  { no: '04', title: '열쇠에서 얼굴까지', blocks: [] },
-  { no: '05', title: '온도를 다루다',     blocks: [] },
+  { no: '01', title: '버튼의 탄생과 소멸', date: '', blocks: [] },
+  { no: '02', title: '발로 조작하는 것들', date: '', blocks: [] },
+  { no: '03', title: '트리거의 계보', date: '2026년 10월', verb: '당기다', blocks: [
+    '인간의 손가락은 참으로 간사하면서도 매혹적인 도구다. 무언가를 누르는 ‘버튼(Button)’이 이성적인 결정의 영역이라면, 손가락을 걸고 지그시 잡아당기는 ‘트리거(Trigger)’는 지극히 본능적이고 역동적인 행위의 영역에 가깝다.',
+    '물건을 작동시키는 수많은 인터페이스 중에서도 ‘당기는 동작’에 최적화된 형태들은 오랜 시간 독자적인 진화를 거쳐왔다. 대표적인 세 선수, 총기의 방아쇠, 전동드릴, 그리고 분무기(스프레이 노즐)를 살펴보면 이들이 직업도, 족보도 다르면서 왜 하나같이 닮아 있는지 알 수 있다.',
+    { img: 'images/t1.webp', w: 8, cap: '방아쇠와 방아쇠 울 (임시 사진)' },
+    { h: '원조의 매운맛: 총기의 방아쇠', en: 'Firearm Trigger' },
+    '트리거라는 단어의 고향이자 ‘당김’의 미학을 완성한 원조다. 총기의 방아쇠는 검지손가락 마디에 착 감기는 완만한 곡선 형태를 띤다. 여기에 손가락이 미끄러지지 않도록 금속 표면에 미세한 톱니(Serrations)를 파놓기도 한다.',
+    '무엇보다 방아쇠의 핵심은 주변을 감싸고 있는 ‘방아쇠 울(Trigger Guard)’에 있다. 의도치 않은 외력에 작동하는 것을 막아주는 이 조그만 울타리는, 사용자로 하여금 “오직 내 검지손가락만이 이 공간의 지배자”라는 묘한 통제감을 선사한다. 당기는 순간 느껴지는 적절한 장력과 ‘깍’ 하고 넘어가는 작동감(Break)은 인류가 만든 가장 치명적이면서도 정교한 촉각 피드백 중 하나다.',
+    { img: 'images/t2.webp', w: 6, cap: '전동드릴의 가변 속도 트리거 (임시 사진)' },
+    { h: '현장의 마에스트로: 전동드릴의 건형 스위치', en: 'Pistol Grip Switch' },
+    '건축 현장이나 DIY 가구 조립 현장에서 만나는 전동드릴은 총기의 형태를 가장 적극적으로 오마주한 산업용 인터페이스다. 형태는 총기의 방아쇠와 판박이지만, 내부 메커니즘은 훨씬 다정해졌다.',
+    '전동드릴의 트리거는 단순히 켜고 끄는(ON/OFF) 스위치가 아니다. 손가락을 살짝 당기면 나사가 천천히 돌고, 깊게 꽉 쥐어 당길수록 RPM이 가파르게 올라가는 ‘가변 속도 제어(Variable Speed Control)’ 역할을 한다. 묵직한 권총 손잡이(Pistol Grip)를 쥐고 검지 끝의 힘 조절만으로 모터의 출력을 자유자재로 지배할 때, 작업자는 순간적으로 유능한 마에스트로가 된 듯한 착각에 빠진다.',
+    { img: 'images/A0003.webp', w: 4, ar: '1 / 1', cap: '스프레이 헤드 트리거 (임시 사진)' },
+    { h: '일상의 에이스: 스프레이 노즐', en: 'Spray Trigger' },
+    '집 안 구석구석 분무기나 청소용 세제에서 만나는 스프레이 노즐은 가장 대중적이고 친숙한 형태다. 총이나 드릴과 달리, 한두 손가락이 아닌 검지와 중지 두 손가락을 동시에 걸칠 수 있도록 길쭉하게 늘려놓은 트리거가 특징이다.',
+    '액체를 피스톤으로 압축해 분사해야 하므로 제법 힘이 많이 들어가는 구조다. 따라서 손가락 하나의 힘에 의존하기보다, 두 손가락으로 레버를 통째로 움켜쥐듯 당기게 설계하여 지레의 원리를 극대화했다. 분무기를 칙칙 뿌릴 때의 경쾌한 반발력은 일상 속 반복 작업의 지루함을 덜어주는 의외의 청량감을 준다.',
+  ] },
+  { no: '04', title: '열쇠에서 얼굴까지', date: '', blocks: [] },
+  { no: '05', title: '온도를 다루다',     date: '', blocks: [] },
 ];
 
-/* 박스 색: 홈과 같은 팔레트에서 랜덤 */
-const PALETTE = [
-  '#414757', '#5a5047', '#7c454f', '#82643c', '#746d76', '#c66335',
-  '#a9737d', '#8691a4', '#ad9275', '#d4bea5', '#cac9c8', '#fcefd8',
-];
-const SOLID_FALLBACK = { 1: '#4a3b35', 2: '#958676', 3: '#3c3126', 4: '#7f482b', 5: '#8a7a6b', 6: '#d3c2ad', 7: '#251d16', 8: '#443a2f', 9: '#27211d', 10: '#4a3b35', 11: '#b4a391', 12: '#cab59d', 13: '#ba9079', 14: '#ccbaa4', 15: '#c6ac86', 16: '#37262a', 17: '#201c1e', 18: '#c0a787', 19: '#181312', 20: '#a28b70', 21: '#29231d', 22: '#aba492', 23: '#b5987d', 24: '#7a7c80', 25: '#8b8e92', 26: '#6a5f5b', 27: '#4c4b4e', 28: '#857769', 29: '#524d51', 30: '#6e706c', 31: '#292521', 32: '#3a352f', 33: '#292520', 34: '#bfb19f', 35: '#7d746b', 36: '#251d16', 37: '#b0a08e', 38: '#958676', 39: '#3c3126', 40: '#b85a30', 41: '#7f482b', 42: '#8a7a6b', 43: '#4a3b35', 44: '#958676', 45: '#3c3126', 46: '#7f482b', 47: '#8a7a6b', 48: '#d3c2ad', 49: '#251d16', 50: '#443a2f', 51: '#27211d', 52: '#4a3b35', 53: '#b4a391', 54: '#cab59d', 55: '#ba9079', 56: '#ccbaa4', 57: '#c6ac86', 58: '#37262a', 59: '#201c1e', 60: '#c0a787', 61: '#181312', 62: '#a28b70', 63: '#29231d', 64: '#aba492' };
-
+const CONFIG = { pages: { toc: 'articles.html', explore: 'explore.html', self: 'article.html' } };
+const PALETTE = ['#344164','#664f3b','#942d40','#9f681f','#7b6182','#d55d26','#c25a6d','#758cb5','#c7935b','#e7bf92','#cfc9c3','#fcefd8'];
+const ARROW = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M1 8h13M9 3l5 5-5 5"/></svg>';
+const ARROW_L = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M15 8H2M7 3 2 8l5 5"/></svg>';
+const UP = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M8 14V2M2 8l6-6 6 6"/></svg>';
 const rand = n => Math.floor(Math.random() * n);
-const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = rand(i + 1); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
-const hexToRgb = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
-function applyColor(el, hex) {
-  const [r, g, b] = hexToRgb(hex);
-  el.style.setProperty('--box-bg', hex);
-  el.style.setProperty('--box-fg', (r * 299 + g * 587 + b * 114) / 1000 >= 150 ? '#000' : '#fff');
-}
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const fgOf = h => { const [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); return (r * 299 + g * 587 + b * 114) / 1000 >= 150 ? '#000' : '#fff'; };
+const paint = (el, c) => { el.style.setProperty('--bg', c); el.style.setProperty('--fg', fgOf(c)); };
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+const homeUrl = () => { try { return sessionStorage.getItem('haebwaya-home') || 'index.html'; } catch (e) { return 'index.html'; } };
+const cellPx = () => innerWidth / 12;
 
-/* ───────── 어떤 아티클인지: article.html?a=03 (없으면 첫 번째) ───────── */
-const params = new URLSearchParams(location.search);
-let idx = Math.max(0, ARTICLES.findIndex(a => a.no === params.get('a')));
-const art = ARTICLES[idx];
+/* 어떤 글인지: article.html?a=03 */
+const q = new URLSearchParams(location.search).get('a');
+const idx = Math.max(0, ARTICLES.findIndex(a => a.no === q));
+const art = ARTICLES[idx], prev = ARTICLES[idx - 1], next = ARTICLES[idx + 1];
 document.title = `${art.title} — 해봐야 아는 것들`;
 
-/* ───────── 아티클 판 채우기 + 행 단위로 배치 ───────── */
-const panel = document.getElementById('panel');
-const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-panel.innerHTML = `<header class="head"><span>${art.no}</span><span>${esc(art.title)}</span></header>`;
-if (!art.blocks.length) panel.insertAdjacentHTML('beforeend', '<p class="soon">준비 중인 글이에요.</p>');
-const parts = art.blocks.map(b => {
-  const out = {};
-  if (b.img) {
-    const el = document.createElement('figure');
-    el.className = 'blk-img';
-    el.innerHTML = `<img src="${b.img.src}" alt="">`;
-    el.style.gridColumn = `${b.img.col} / span ${b.img.w}`;
-    panel.appendChild(el);
-    out.img = el;
+const pal = shuffle(PALETTE.slice());
+const colors = { name: pal[0], art: pal[1], prev: pal[2], next: pal[3] };
+const box = (cls, c, t, s, href, delay = 0) => `<a class="box ${cls}" ${href ? `href="${href}"` : ''} style="--bg:${c};--fg:${fgOf(c)};--delay:${delay}s"><span class="t">${t}</span><span class="s">${s}</span></a>`;
+
+/* 본문 */
+let secNo = 0;
+const toc = [{ id: 'top', label: '들어가며', mark: '—' }];
+const flow = art.blocks.length ? art.blocks.map(b => {
+  if (typeof b === 'string') return `<p>${esc(b)}</p>`;
+  if (b.h) { secNo++; const id = 's' + secNo; toc.push({ id, label: b.h.split(':')[0], mark: secNo }); return `<h2 id="${id}">${esc(b.h)}${b.en ? `<small>${esc(b.en)}</small>` : ''}</h2>`; }
+  if (b.img) return `<figure class="w${b.w || 8}" style="${b.ar ? `--ar:${b.ar}` : ''}"><img src="${b.img}" alt="${esc(b.cap || '')}" loading="lazy">${b.cap ? `<figcaption>${esc(b.cap)}</figcaption>` : ''}</figure>`;
+  return '';
+}).join('') : '<p class="soon">준비 중인 글이에요.</p>';
+
+const tocHtml = art.blocks.length ? `<nav class="toc" aria-label="이 글의 목차"><ol>${toc.map(t => `<li><a href="#${t.id}" data-id="${t.id}"><b>${t.mark}</b>${esc(t.label)}</a></li>`).join('')}</ol></nav>` : '';
+const pager = `<div class="pager">
+  ${box('left' + (prev ? '' : ' off'), colors.prev, '이전 글', prev ? `${ARROW_L} ${prev.no} ${esc(prev.title)}` : '없음', prev ? `${CONFIG.pages.self}?a=${prev.no}` : '')}
+  ${box(next ? '' : 'off', colors.next, '다음 글', next ? `${next.no} ${esc(next.title)} ${ARROW}` : '없음', next ? `${CONFIG.pages.self}?a=${next.no}` : '')}
+</div>`;
+
+document.getElementById('page').innerHTML =
+  box('b-name', colors.name, '해봐야 아는 것들', 'interface archiving', homeUrl()) +
+  box('b-art', colors.art, '아티클', `${ARTICLES.length}편`, CONFIG.pages.toc, .09) +
+  `<header class="head" id="top"><div class="no">${art.no}</div><h1>${esc(art.title)}</h1><div class="meta">${[art.date, art.verb].filter(Boolean).join(' · ')}</div></header>` +
+  tocHtml + `<article class="flow">${flow}</article>` + pager;
+
+/* 목차: 누르면 부드럽게 이동, 지금 읽는 소제목 표시 */
+const links = [...document.querySelectorAll('.toc a')];
+/* 섹션의 시작 = 소제목 바로 위 사진 (없으면 소제목) */
+const anchor = id => { const h = document.getElementById(id); const p = h && h.previousElementSibling; return p && p.tagName === 'FIGURE' ? p : h; };
+links.forEach(a => a.addEventListener('click', e => {
+  e.preventDefault();
+  const t = anchor(a.dataset.id);
+  scrollTo({ top: a.dataset.id === 'top' ? 0 : t.getBoundingClientRect().top + scrollY - cellPx() * .9, behavior: 'smooth' });
+}));
+function markToc() {
+  const line = cellPx() * 1.5;
+  let cur = 'top';
+  toc.forEach(t => { const el = anchor(t.id); if (el && el.getBoundingClientRect().top < line && t.id !== 'top') cur = t.id; });
+  links.forEach(a => a.classList.toggle('on', a.dataset.id === cur));
+}
+
+const HEAT = {
+  heat: true,
+  heatMax: 0.6,              // 가장 뜨거운 색의 위치 (0.6 = 빨강)
+  heatBlob: 0.6,             // 움직이는 사진 덩어리 열의 번짐 크기 (칸 대비)
+  heatScroll: [0, 0],  // 스크롤 잔상 세기 (최대, 스크롤 1px당)
+  heatScrollBlob: 0.25,      // 스크롤 잔상의 번짐 크기 (칸 대비)
+  heatFollow: 1,           // 스크롤할 때 열이 페이지를 따라가는 정도
+};
+/* ═════════ 히트맵: 아티클 글은 마우스 열만 (스크롤·움직임 열 없음) ═════════ */
+const heat = (() => {
+  const S = 0.25;                       // 해상도 (화면의 1/4)
+  const canvas = document.getElementById('heat');
+  if (!HEAT.heat) { canvas.remove(); return { track() {} }; }     // 히트맵 끈 버전: 빈 칸은 그냥 검정
+  const ctx = canvas.getContext('2d');
+  const small = document.createElement('canvas'), sctx = small.getContext('2d');
+  let W, H, fw, fh, T, B, M, Q, img, running = false, lastScroll = scrollY, acc = 0;
+  const movers = new Map();
+  const mouse = { x: 0, y: 0, has: false, trail: [] };
+  function resize() {
+    W = innerWidth; H = innerHeight;
+    canvas.width = W; canvas.height = H;
+    fw = Math.ceil(W * S); fh = Math.ceil(H * S);
+    small.width = fw; small.height = fh;
+    T = new Float32Array(fw * fh); B = new Float32Array(fw * fh);
+    M = new Float32Array(fw * fh); Q = new Float32Array(fw * fh);
+    img = sctx.createImageData(fw, fh);
   }
-  if (b.text) {
-    const el = document.createElement('div');
-    el.className = 'blk-text' + (b.text.align === 'right' ? ' right' : '');
-    el.innerHTML = b.text.paras.map(p => typeof p === 'string' ? `<p>${esc(p)}</p>` : `<p class="gap">${esc(p.t)}</p>`).join('');
-    el.style.gridColumn = `${b.text.col} / span ${b.text.w}`;
-    panel.appendChild(el);
-    out.text = el;
+  function add(x, y, w, h, k, soft) {
+    const m = soft * 3;
+    const x0 = Math.max(0, Math.floor((x - m) * S)), x1 = Math.min(fw - 1, Math.ceil((x + w + m) * S));
+    const y0 = Math.max(0, Math.floor((y - m) * S)), y1 = Math.min(fh - 1, Math.ceil((y + h + m) * S));
+    for (let j = y0; j <= y1; j++) {
+      const py = j / S, dy = Math.max(y - py, 0, py - (y + h));
+      for (let i = x0; i <= x1; i++) {
+        const px = i / S, dx = Math.max(x - px, 0, px - (x + w));
+        const v = Math.exp(-(dx * dx + dy * dy) / (2 * soft * soft));
+        if (v < 0.01) continue;
+        const n = j * fw + i; T[n] = Math.min(1, T[n] + v * k);
+      }
+    }
   }
-  return out;
+  /* 덩어리 열: 함께 움직이는 사진들을 한 장의 판(M)에 찍고, 크게 흐리게 한 뒤 열로 더함
+     → 사진 하나하나의 네모(그리드)가 아니라 한 덩어리의 잔상으로 남음 */
+  let massDirty = false;
+  function stamp(x, y, w, h) {
+    const x0 = Math.max(0, Math.floor(x * S)), x1 = Math.min(fw, Math.ceil((x + w) * S));
+    const y0 = Math.max(0, Math.floor(y * S)), y1 = Math.min(fh, Math.ceil((y + h) * S));
+    for (let j = y0; j < y1; j++) M.fill(1, j * fw + x0, j * fw + x1);
+    if (x1 > x0 && y1 > y0) massDirty = true;
+  }
+  function blur(r) {                    // 가로·세로 상자 흐림 (두 번 = 부드러운 번짐)
+    for (let pass = 0; pass < 2; pass++) {
+      for (let j = 0; j < fh; j++) {     // 가로 → Q
+        const o = j * fw; let s = 0;
+        for (let i = -r; i <= r; i++) s += M[o + Math.min(fw - 1, Math.max(0, i))];
+        for (let i = 0; i < fw; i++) {
+          Q[o + i] = s / (2 * r + 1);
+          s += M[o + Math.min(fw - 1, i + r + 1)] - M[o + Math.max(0, i - r)];
+        }
+      }
+      for (let i = 0; i < fw; i++) {     // 세로 → M
+        let s = 0;
+        for (let j = -r; j <= r; j++) s += Q[Math.min(fh - 1, Math.max(0, j)) * fw + i];
+        for (let j = 0; j < fh; j++) {
+          M[j * fw + i] = s / (2 * r + 1);
+          s += Q[Math.min(fh - 1, j + r + 1) * fw + i] - Q[Math.max(0, j - r) * fw + i];
+        }
+      }
+    }
+  }
+  function flushMass(k, size = HEAT.heatBlob) {
+    if (!massDirty) return;
+    blur(Math.max(1, Math.round(innerWidth / 12 * S * size)));
+    for (let n = 0; n < M.length; n++) if (M[n] > 0.01) T[n] = Math.min(1, T[n] + M[n] * k);
+    M.fill(0); massDirty = false;
+  }
+  function color(v) {                    // 검정 → 파랑 → 초록 → 노랑 → 빨강 (HEAT.heatMax에서 멈춤)
+    const S = [[0.0, 0, 0, 0], [0.06, 0, 0, 0], [0.21, 30, 40, 220], [0.36, 0, 235, 60], [0.45, 255, 230, 0], [0.54, 235, 0, 10], [0.6, 235, 0, 10], [1, 235, 0, 10]];   // 검정 2 : 파랑 3 : 초록 2 : 노랑 1 : 빨강 2 (HEAT.heatMax 0.6까지를 10으로 나눈 비율, 각 색 구간의 가운데를 기준점으로 그라데이션)
+    let i = 1; while (i < S.length - 1 && v > S[i][0]) i++;
+    const [a, b] = [S[i - 1], S[i]], t = Math.min(1, Math.max(0, (v - a[0]) / (b[0] - a[0])));
+    return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t];
+  }
+  function frame() {
+    /* 스크롤: 열은 페이지를 일부만 따라감(HEAT.heatFollow) → 화면 위를 지나가는 아이템이 빈 칸에 잔상을 남김 */
+    const dyScroll = scrollY - lastScroll;
+    acc += dyScroll * S * HEAT.heatFollow; lastScroll = scrollY;
+    if (dyScroll && HEAT.heatScroll[0]) {
+      const cell = innerWidth / 12, k = Math.min(HEAT.heatScroll[0], Math.abs(dyScroll) * HEAT.heatScroll[1]);
+      document.querySelectorAll('.item').forEach(el => {          // 화면에 보이는 사진들
+        const r = el.getBoundingClientRect();
+        if (r.top > H || r.bottom < 0) return;
+        stamp(r.left, r.top, r.width, r.height);
+      });
+      flushMass(k, HEAT.heatScrollBlob);
+    }
+    const n = Math.trunc(acc);
+    if (n) {
+      acc -= n;
+      if (Math.abs(n) >= fh) T.fill(0);
+      else if (n > 0) { T.copyWithin(0, n * fw); T.fill(0, (fh - n) * fw); }
+      else { T.copyWithin(-n * fw, 0, (fh + n) * fw); T.fill(0, 0, -n * fw); }
+    }
+    /* 마우스 */
+    mouse.trail.forEach(p => add(p.x, p.y, 0, 0, p.k, 26));
+    mouse.trail.length = 0;
+    /* 밀려나는 아이템: 지금 있는 자리 전체에 열 → 빈 칸을 지나가면 그 자리에 자국 */
+    const now = performance.now();
+    movers.forEach((until, el) => {
+      if (now > until || !el.isConnected) { movers.delete(el); return; }
+      const r = el.getBoundingClientRect();
+      stamp(r.left, r.top, r.width, r.height);
+    });
+    flushMass(0.025);
+    /* 식고 퍼짐 */
+    let max = 0;
+    for (let j = 0; j < fh; j++) for (let i = 0; i < fw; i++) {
+      const k = j * fw + i;
+      const l = i > 0 ? T[k - 1] : T[k], r = i < fw - 1 ? T[k + 1] : T[k];
+      const u = j > 0 ? T[k - fw] : T[k], d = j < fh - 1 ? T[k + fw] : T[k];
+      B[k] = (T[k] * 0.6 + (l + r + u + d) * 0.1) * 0.986;
+      if (B[k] > max) max = B[k];
+    }
+    [T, B] = [B, T];
+    const px = img.data;
+    for (let k = 0, p = 0; k < T.length; k++, p += 4) {
+      const v = T[k];
+      if (v < 0.01) { px[p + 3] = 0; continue; }
+      const c = color(Math.min(1, v) * HEAT.heatMax);   // 검정 바탕 위에서 남색 → 파랑 → 보라 → 빨강 (가장 뜨거운 곳 = 빨강, 노랑·흰색은 안 씀)
+      px[p] = c[0]; px[p + 1] = c[1]; px[p + 2] = c[2];
+      px[p + 3] = 255 * Math.min(1, v / 0.12);
+    }
+    sctx.putImageData(img, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(small, 0, 0, W, H);
+    if (max < 0.004 && !movers.size && !mouse.trail.length && !dyScroll) { T.fill(0); ctx.clearRect(0, 0, W, H); running = false; return; }
+    requestAnimationFrame(frame);
+  }
+  function wake() { if (!running) { running = true; lastScroll = scrollY; acc = 0; requestAnimationFrame(frame); } }
+  /* 마우스: 지나간 경로를 따라 열을 남김 (히트맵은 사진·박스 아래 층이라 빈 칸에서만 보임) */
+  addEventListener('pointermove', e => {
+    const x = e.clientX, y = e.clientY;
+    if (mouse.has) {
+      const dx = x - mouse.x, dy = y - mouse.y, dist = Math.hypot(dx, dy);
+      const steps = Math.max(1, Math.ceil(dist / 10)), k = Math.min(dist / 30, 1) * 0.5;
+      for (let s = 1; s <= steps; s++) mouse.trail.push({ x: mouse.x + dx * s / steps, y: mouse.y + dy * s / steps, k: k / steps });
+    }
+    mouse.x = x; mouse.y = y; mouse.has = true;
+    wake();
+  }, { passive: true });
+  document.addEventListener('pointerleave', () => { mouse.has = false; });
+  addEventListener('scroll', () => { if (!running) { running = true; requestAnimationFrame(frame); } }, { passive: true });   // 스크롤도 열을 만듦
+  resize();
+  addEventListener('resize', resize);
+  return { track(el, ms) { movers.set(el, performance.now() + ms); wake(); } };
+})();
+
+
+/* 스크롤 메뉴 */
+const fab = document.getElementById('fab'), menu = document.getElementById('menu');
+paint(fab, colors.name);
+[
+  { label: '홈', color: colors.name, href: homeUrl() },
+  { label: '아티클 목차', color: colors.art, href: CONFIG.pages.toc },
+  { label: '탐색', color: colors.prev, href: CONFIG.pages.explore },
+  { label: '맨 위로', color: colors.next, act: () => scrollTo({ top: 0, behavior: 'smooth' }), icon: UP },
+].forEach((m, i) => {
+  const el = document.createElement(m.href ? 'a' : 'button');
+  if (m.href) el.href = m.href;
+  el.innerHTML = `<span>${m.label}</span>${m.href ? ARROW : m.icon}`;
+  el.style.setProperty('--i', i);
+  paint(el, m.color);
+  el.addEventListener('click', () => { toggleMenu(false); m.act && m.act(); });
+  menu.appendChild(el);
 });
-
-function layout() {
-  const cell = innerWidth / 12;
-  let row = 2;                                            // 1행은 번호·제목
-  if (!art.blocks.length) row = 4;                        // 아직 글이 없으면 '준비 중' 한 줄만
-  art.blocks.forEach((b, i) => {
-    const p = parts[i];
-    let span = b.img ? b.img.h : 1;
-    if (p.text) {
-      p.text.style.gridRow = `${row} / span 20`;          // 먼저 넉넉히 두고 실제 글 높이를 잼
-      const need = Math.max(1, Math.ceil((p.text.offsetHeight - 1) / cell));
-      span = Math.max(span, need);
-      p.text.style.gridRow = `${row} / span ${need}`;
-    }
-    if (p.img) p.img.style.gridRow = `${row} / span ${b.img.h}`;
-    row += span + 1;                                      // 블록 사이 한 행 비움
-  });
-  const rows = row - 1;                                   // 판의 행 수 (마지막 빈 행 포함)
-  panel.style.setProperty('--rows', rows);
-  fillCells(1 + rows + CONFIG.extraRows);
+function toggleMenu(on) { const v = menu.classList.toggle('on', on ?? !menu.classList.contains('on')); fab.classList.toggle('open', v); }
+fab.addEventListener('click', e => { e.stopPropagation(); toggleMenu(); });
+document.addEventListener('click', e => { if (!e.target.closest('.menu, .fab')) toggleMenu(false); });
+function onScroll() {
+  fab.classList.add('show');                                   // 글 페이지: 메뉴 아이콘은 처음부터 보임
+  markToc();
 }
-
-/* ───────── 배경 사진 칸 ───────── */
-const grid = document.getElementById('grid');
-let IMAGES = [], ORDER = [], made = 0, cellCount = 0;
-function solidColor(img, n) {
-  try {
-    const cv = document.createElement('canvas'); cv.width = cv.height = 1;
-    const cx = cv.getContext('2d', { willReadFrequently: true });
-    const iw = img.naturalWidth, ih = img.naturalHeight, s = Math.min(iw, ih);
-    cx.drawImage(img, (iw - s) / 2, (ih - s) / 2, s, s, 0, 0, 1, 1);
-    const [r, g, b] = cx.getImageData(0, 0, 1, 1).data;
-    return `rgb(${r},${g},${b})`;
-  } catch (e) { return SOLID_FALLBACK[n] || '#222'; }
-}
-const loadImage = src => new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
-function fillCells(totalRows) {
-  if (!ORDER.length) return;
-  const frag = document.createDocumentFragment();
-  for (; made < totalRows; made++) {
-    for (let c = 1; c <= 12; c++) {
-      const cell = document.createElement('div');
-      cell.className = `cell im-${ORDER[cellCount++ % ORDER.length]}`;
-      cell.style.gridRow = made + 1; cell.style.gridColumn = c;
-      frag.appendChild(cell);
-    }
-  }
-  grid.appendChild(frag);
-}
-
-/* ───────── 이동: 박스·판이 들어왔던 꼭짓점으로 줄어든 뒤 다음 페이지로 ───────── */
-function leave(url) {
-  if (document.body.classList.contains('leaving')) return;
-  document.body.classList.add('leaving');
-  setTimeout(() => { location.href = url; }, 600);
-}
-const prevBtn = document.getElementById('prev'), nextBtn = document.getElementById('next');
-prevBtn.disabled = idx === 0;
-nextBtn.disabled = idx === ARTICLES.length - 1;
-prevBtn.addEventListener('click', () => leave(`${CONFIG.page}?a=${ARTICLES[idx - 1].no}`));
-nextBtn.addEventListener('click', () => leave(`${CONFIG.page}?a=${ARTICLES[idx + 1].no}`));
-/* 홈: 들어오기 전에 있던 홈 파일로 (버전이 여러 개여도 출발한 홈으로 돌아감) */
-function homeUrl() {
-  try { const h = sessionStorage.getItem('haebwaya-home'); if (h) return h; } catch (e) {}
-  return CONFIG.home;
-}
-document.getElementById('navName').href = homeUrl();
-document.getElementById('navName').addEventListener('click', e => { e.preventDefault(); leave(homeUrl()); });
-document.getElementById('toToc').addEventListener('click', e => { e.preventDefault(); leave('articles.html'); });
-addEventListener('pageshow', e => { if (e.persisted) document.body.classList.remove('leaving'); });   // 뒤로가기로 돌아왔을 때
-
-/* ───────── 시작 ───────── */
-(async function init() {
-  const [c1, c2] = shuffle([...PALETTE]);
-  applyColor(document.getElementById('navArticle'), c1);
-  applyColor(document.getElementById('navName'), c2);
-
-  const imgs = await Promise.all(Array.from({ length: CONFIG.imageCount }, (_, i) => loadImage(CONFIG.path(i + 1))));
-  let css = '';
-  imgs.forEach((img, i) => {
-    if (!img) return;
-    IMAGES.push(i + 1);
-    css += `.im-${i + 1}{--img:url(${img.src});--solid:${solidColor(img, i + 1)};}\n`;
-  });
-  const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
-  ORDER = shuffle(IMAGES.slice());
-
-  await document.fonts.ready;
-  layout();
-  let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(layout, 100); });
+addEventListener('scroll', onScroll, { passive: true });
+onScroll();
+/* ═════════ 맨 위로 ↑ (모든 페이지 공통) ═════════ */
+(() => {
+  const up = document.getElementById('toTop');
+  up.addEventListener('click', () => scrollTo({ top: 0, behavior: 'smooth' }));
+  addEventListener('scroll', () => {
+    if (!up.dataset.painted && colors.name) { paint(up, colors.name); up.dataset.painted = 1; }
+    up.classList.toggle('show', scrollY > innerWidth / 24);   // 반 칸 이상 내리면
+  }, { passive: true });
 })();
 </script>
 </body>

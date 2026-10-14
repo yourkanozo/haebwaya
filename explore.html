@@ -6,9 +6,684 @@
 <title>탐색 — 해봐야 아는 것들</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@v2.0/nanumsquare.css">
 <style>
-  html, body { margin: 0; height: 100%; background: #000; color: #fff; font-family: "NanumSquare", sans-serif; font-weight: 300; }
-  body { display: flex; align-items: center; justify-content: center; font-size: calc(100vw / 1920 * 15); }
+  /* ───────── 탐색 (web-rules.md 4-4) ─────────
+     한 탭 안에서: 동사(여러 개, 모두 해당 = AND) + 분야(하나) + 검색 → 결과가 바로 바뀜
+     태그 판: 그리드 칸을 세로 4줄로 나눠 태그를 넣음. 태그가 늘면 판이 칸 단위로 아래로 길어짐
+     결과: 맞는 사진만 왼쪽 위부터 모아서 */
+  :root {
+    --cell: calc(100vw / 12);
+    --line: calc(var(--cell) / 4);       /* 태그 한 줄 = 칸의 1/4 */
+    --u: calc(100vw / 1920);
+    --gut:  calc(var(--u) * 30);
+    --fs-l: calc(var(--u) * 25);
+    --fs-s: calc(var(--u) * 15);
+    --lh-s: calc(var(--u) * 22);
+    --fs-xl: calc(var(--u) * 40);
+    --ease: cubic-bezier(.3, 0, .2, 1);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: #000; color: #fff; }
+  body { font-family: "NanumSquare", -apple-system, sans-serif; font-weight: 300; word-break: keep-all; overflow-x: hidden; }
+  a { color: inherit; text-decoration: none; }
+  button, input { font: inherit; color: inherit; background: none; border: 0; text-align: left; }
+  button { cursor: pointer; }
+  #heat { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; }
+  .row12 { display: grid; grid-template-columns: repeat(12, var(--cell)); position: relative; z-index: 1; }   /* 히트맵(캔버스) 위 */
+
+  /* 1줄: 박스 */
+  .top { height: var(--cell); }
+  .box { position: relative; display: block; background: var(--bg); color: var(--fg); height: var(--cell); animation: boxIn .8s var(--ease) var(--delay, 0s) backwards; }
+  @keyframes boxIn { from { clip-path: inset(0 100% 100% 0); } to { clip-path: inset(0); } }
+  .box .t { position: absolute; left: var(--gut); top: var(--gut); font-size: var(--fs-l); line-height: 1; white-space: nowrap; }
+  .box .s { position: absolute; right: var(--gut); bottom: var(--gut); font-size: var(--fs-s); line-height: 1; white-space: nowrap; display: flex; gap: calc(var(--u) * 10); align-items: center; }
+  .box .n { position: absolute; right: var(--gut); bottom: var(--gut); font-size: var(--fs-xl); line-height: 1; }
+  .box svg { width: calc(var(--u) * 16); height: calc(var(--u) * 16); }
+  .b-name   { grid-column: 1 / span 2; }
+  .b-search { grid-column: 3 / span 3; cursor: text; }                 /* 프로젝트 이름 바로 옆 */
+  .b-search .cnt b { font-weight: 300; }
+  .b-search .cnt { position: absolute; right: var(--gut); top: var(--gut); font-size: var(--fs-s); line-height: 1; opacity: .7; }
+  .b-search input { position: absolute; left: var(--gut); right: var(--gut); bottom: var(--gut); font-size: var(--fs-l); line-height: 1.2; outline: none; border-bottom: 1px solid currentColor; padding-bottom: calc(var(--u) * 6); }
+  .b-search input::placeholder { color: inherit; opacity: .5; }
+  .b-reset  { grid-column: 6 / span 1; transition: opacity .3s; }   /* 검색 바로 옆 (오른쪽 위는 메뉴 자리) */
+  .b-reset.off { opacity: 0; pointer-events: none; }
+
+  /* 2줄~: 태그 판 (동사 1~8칸, 분야 9~12칸) */
+  .panel { align-items: start; }
+  .tags { display: grid; grid-auto-flow: column; grid-template-rows: repeat(var(--lines), var(--line)); grid-auto-columns: var(--cell); }
+  .tags.verbs  { grid-column: 1 / span 8; }
+  .tags.fields { grid-column: 9 / span 4; }
+  .tag { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--u) * 8); padding: 0 calc(var(--u) * 18); font-size: var(--fs-s); line-height: 1; white-space: nowrap; overflow: hidden;
+         transition: background-color .25s var(--ease), color .25s var(--ease), opacity .25s; }
+  .tag i { font-style: normal; opacity: .5; }
+  .tag:hover { background: rgba(255,255,255,.08); }
+  .tag.on { background: var(--bg); color: var(--fg); }
+  .tag.on i { opacity: .7; }
+  .tag.zero { opacity: .25; pointer-events: none; }
+  .tag.head { opacity: .5; pointer-events: none; }
+
+
+  /* ── 태그 디자인 시안 (?t=a / b / c). 기본 b ── */
+  .panel .lab { grid-column: span 1; font-size: var(--fs-s); line-height: 1; opacity: .5; padding: var(--gut); }
+  /* A: 큰 글자 흐름 — 태그가 문장처럼 이어짐 */
+  .t-a .tags, .t-c .tags { display: block; padding: calc(var(--u) * 26) var(--gut) 0; line-height: calc(var(--cell) / 3); }
+  .t-a .tag, .t-c .tag { display: inline; padding: calc(var(--u) * 2) calc(var(--u) * 6); margin-right: calc(var(--u) * 14); font-size: var(--fs-l); background: none; }
+  .t-a .tag i, .t-c .tag i { font-size: var(--fs-s); vertical-align: super; margin-left: calc(var(--u) * 4); }
+  .t-a .tag { opacity: .45; } .t-a .tag:hover { opacity: .8; background: none; }
+  .t-a .tag.on { opacity: 1; background: var(--bg); color: var(--fg); }
+  .t-a .tag.zero { opacity: .12; }
+  /* C: A + 열 색 — 남는 개수가 많을수록 뜨거운 색 (히트맵과 같은 색) */
+  .t-c .tag { color: var(--heat); } .t-c .tag:hover { background: none; text-decoration: underline; }
+  .t-c .tag.on { background: #fff; color: #000; }
+  .t-c .tag.zero { opacity: .25; }
+  /* B: 키 — 태그 하나 = 1칸 × 반 칸 작은 박스. 이름 왼쪽 위, 숫자 오른쪽 아래 (메인 박스와 같은 글자 배치)
+     색: 동사 키는 모두 동사 색, 분야 키는 모두 분야 색 (불러올 때마다 랜덤). 평소엔 옅게(검정과 섞음), 고르면 진하게(원래 색)
+     머리글: 1칸 × 1칸 박스 (이름 25 왼쪽 위 / 설명 15 오른쪽 아래) → 아래 키들보다 한 단계 위 */
+  .t-b .tags { display: grid; grid-auto-flow: column; grid-template-rows: repeat(var(--rows), calc(var(--cell) / 2)); grid-auto-columns: var(--cell); }
+  .t-b .tag.head { grid-column: 1; grid-row: 1 / span 2; }
+  .t-b .tags { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }   /* 넘치면 줄만 옆으로 */
+  .t-b .tags::-webkit-scrollbar { display: none; }
+  .t-b .tag.head { position: sticky; left: 0; z-index: 1; }            /* 옆으로 넘겨도 머리글은 왼쪽에 남음 */
+  .t-b .tag { position: relative; display: block; padding: 0; color: #fff;
+              background: color-mix(in srgb, var(--grp) 55%, #000); box-shadow: inset -1px -1px 0 #000; }
+  .t-b .tag span { position: absolute; left: calc(var(--u) * 16); top: calc(var(--u) * 14); }
+  .t-b .tag i { position: absolute; right: calc(var(--u) * 16); bottom: calc(var(--u) * 14); }
+  .t-b .tag:hover { background: color-mix(in srgb, var(--grp) 75%, #000); }
+  .t-b .tag.on { background: var(--grp); color: var(--grp-fg); }
+  /* 항목 없는 태그: 같은 색을 훨씬 연하게 (못 누름). 투명도 없이 불투명한 색 → 아래 히트맵이 비치지 않음 */
+  .t-b .tag.zero { opacity: 1; background: color-mix(in srgb, color-mix(in srgb, var(--grp) 35%, #fff) 30%, #000); color: color-mix(in srgb, color-mix(in srgb, var(--grp) 35%, #fff) 60%, #000); }
+  .t-b .tag.zero i { opacity: .6; }
+  .t-b .tag.head { background: var(--grp); color: var(--grp-fg); opacity: 1; }
+  .t-b .tag.head span { left: var(--gut); top: var(--gut); font-size: var(--fs-l); line-height: 1; }
+  .t-b .tag.head i { right: var(--gut); bottom: var(--gut); opacity: .8; }
+
+  /* 결과 */
+  .results { grid-auto-rows: var(--cell); }                         /* 태그 판 바로 아래부터 (여백 없음) */
+  .panel[data-layout="stack"] .tags.verbs, .panel[data-layout="stack"] .tags.fields { grid-column: 1 / -1; }
+  .panel[data-layout="side"] .tags.verbs { grid-column: 1 / span 7; }
+  .panel[data-layout="side"] .tags.fields { grid-column: 9 / span 4; }
+  .t-b .tag.blank { background: color-mix(in srgb, var(--grp) 10%, #000); pointer-events: none; }
+  .item { position: relative; cursor: pointer; transform-origin: 0 0; }
+  .item::before { content: ''; position: absolute; inset: 0; background: #111 var(--img) center / cover; }
+  /* 로딩: 메인과 같음 — 단색 → 반은 사진·반은 단색 → 사진 ('탁탁' 바뀜). 0.4초 안에 오거나 화면 밖이면 바로 사진 */
+  .item::after { content: ''; position: absolute; inset: 0; background: var(--solid, #2a2622); }
+  .item.half-x::after { clip-path: inset(0 0 0 50%); }
+  .item.half-y::after { clip-path: inset(50% 0 0 0); }
+  .item.done::after { display: none; }
+  .item.noimg::before { background: #141414; }
+  .item.noimg::after { display: block; background: none; clip-path: none; content: attr(data-code); position: absolute; left: calc(var(--u) * 14); bottom: calc(var(--u) * 12); font-size: var(--fs-s); opacity: .45; }
+  .item.open { z-index: 4; cursor: zoom-out; }
+  /* 설명 창: 메인과 같음 — 사진 평균색, 사진 쪽 가장자리에서 펼쳐짐 */
+  .info { z-index: 3; background: var(--solid); color: var(--fg); padding: var(--gut); display: flex; flex-direction: column;
+          clip-path: inset(0 0 0 0); animation: infoIn var(--info-dur, .8s) var(--ease) var(--info-delay, 0s) backwards; }
+  .info.from-right  { animation-name: infoIn; }
+  .info.from-left   { animation-name: infoInL; }
+  .info.from-bottom { animation-name: infoInB; }
+  .info.from-top    { animation-name: infoInT; }
+  /* 설명 창이 사진 뒤에서 '스르륵' 밀려 나옴: 사진 쪽 가장자리에서 펼쳐지면서 살짝 미끄러져 나옴 */
+  @keyframes infoIn  { from { clip-path: inset(0 100% 0 0); transform: translateX(-50%); } }
+  @keyframes infoInL { from { clip-path: inset(0 0 0 100%); transform: translateX(50%); } }
+  @keyframes infoInB { from { clip-path: inset(0 0 100% 0); transform: translateY(-50%); } }
+  @keyframes infoInT { from { clip-path: inset(100% 0 0 0); transform: translateY(50%); } }
+  .info .code { font-size: var(--fs-s); opacity: .7; line-height: 1; }
+  .info .name { font-size: var(--fs-l); line-height: 1.2; margin-top: calc(var(--u) * 14); }
+  .info .desc { font-size: var(--fs-s); line-height: var(--lh-s); margin-top: calc(var(--u) * 14); }
+  .info dl { margin-top: auto; font-size: var(--fs-s); line-height: var(--lh-s); display: grid; grid-template-columns: auto 1fr; column-gap: calc(var(--u) * 16); }
+  .info dt { opacity: .7; }
+  .msg { grid-column: 1 / -1; padding: var(--cell) 0; text-align: center; font-size: var(--fs-s); opacity: .6; }
+
+  /* 스크롤하면: 위쪽 가운데에 요약 줄 (메인 접이식 메뉴와 같은 자리·모양). 누르면 맨 위로 → 태그 판 */
+  /* 메뉴: 메인·목차와 같은 접이식 메뉴. 탐색에서는 처음부터 위쪽 가운데에 떠 있음 */
+  .dock { position: fixed; z-index: 20; top: calc(var(--u) * 24); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center;
+          filter: drop-shadow(0 calc(var(--u) * 4) calc(var(--u) * 10) rgba(0,0,0,.28)); pointer-events: none; }
+  .fab { pointer-events: auto; }
+  .fab, .menu a, .menu button { width: calc(var(--cell) * 1.5); height: calc(var(--cell) / 2); background: var(--bg); color: var(--fg);
+          display: flex; align-items: center; justify-content: space-between; padding: 0 var(--gut); font-size: var(--fs-s); }
+  .fab { animation: boxIn .5s var(--ease) .3s backwards; }
+  .fab svg, .menu svg { width: calc(var(--u) * 16); height: calc(var(--u) * 16); transition: transform .3s var(--ease); }
+  .fab.open svg { transform: rotate(180deg); }
+  .menu { display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+  .menu a, .menu button { clip-path: inset(0 0 100% 0); transition: clip-path .45s var(--ease) calc(var(--i) * 60ms); }
+  .menu.on { pointer-events: auto; }
+  .menu.on a, .menu.on button { clip-path: inset(0); }
+  /* 맨 위로: 태그 판을 지나 스크롤하면 화면 가운데 아래에 ↑ 아이콘 하나 (메뉴와 같은 크기·간격·그림자). 누르면 태그 판으로 */
+  .sum { position: fixed; z-index: 20; left: 50%; bottom: calc(var(--u) * 24); transform: translateX(-50%);
+         width: calc(var(--cell) / 2); height: calc(var(--cell) / 2); display: flex; align-items: center; justify-content: center;
+         background: var(--bg); color: var(--fg); filter: drop-shadow(0 calc(var(--u) * 4) calc(var(--u) * 10) rgba(0,0,0,.28));
+         clip-path: inset(100% 0 0 0); transition: clip-path .5s var(--ease); pointer-events: none; }
+  .sum.show { clip-path: inset(0); pointer-events: auto; }
+  .sum svg { width: calc(var(--u) * 22); height: calc(var(--u) * 22); }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; } }
+  /* ───────── 메뉴 = 햄버거 아이콘 (2026-10-14): 모든 페이지 같은 자리. 오른쪽 위, 화면 가장자리에서 24만큼 띄움 ─────────
+     누르면 아래로 메뉴가 펼쳐지고 아이콘은 ×로 바뀜 */
+  .dock { left: auto !important; right: calc(var(--u) * 24) !important; transform: none !important; align-items: flex-end !important; }
+  .fab { width: calc(var(--cell) / 2) !important; padding: 0 !important; justify-content: center !important; }
+  .fab svg { width: calc(var(--u) * 22) !important; height: calc(var(--u) * 22) !important; transform: none !important; }
+  .fab .i-x { display: none; }
+  .fab.open .i-x { display: block; }
+  .fab.open .i-ham { display: none; }
 </style>
+<script src="images/colors.js"></script>   <!-- 사진별 평균색 (없으면 임시 색) -->
 </head>
-<body>탐색 페이지 — 준비 중</body>
+<body>
+<canvas id="heat"></canvas>
+<div class="row12 top" id="top"></div>
+<div class="row12 panel" id="panel"></div>
+<main class="row12 results" id="results"><p class="msg">불러오는 중…</p></main>
+<div class="dock">
+  <button class="fab" id="fab" type="button" aria-label="메뉴 열기"><svg class="i-ham" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M3 6h16M3 11h16M3 16h16"/></svg><svg class="i-x" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.2"><path d="m5 5 12 12M17 5 5 17"/></svg></button>
+  <nav class="menu" id="menu"></nav>
+</div>
+<button class="sum" id="sum" type="button" aria-label="맨 위로"><svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M11 19V3M4 10l7-7 7 7"/></svg></button>
+<script>
+/* ═════════ 데이터: 구글 시트 (메인과 같은 시트) ═════════ */
+const SHEET = { id: '1YVzdoa3hIvPI9m3hIHLQ4squ8v6EnaDybtEBF-oZdWI', indexGid: '821044083' };
+const sheetUrl = q => `https://docs.google.com/spreadsheets/d/${SHEET.id}/gviz/tq?tqx=out:csv&${q}`;
+const imgPath = id => `images/${id}.webp`;         // 사진 파일 이름 = 시트 id (WebP)
+function parseCSV(text) {
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) { if (ch === '"' && text[i + 1] === '"') { cur += '"'; i++; } else if (ch === '"') q = false; else cur += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(cur); cur = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cur); rows.push(row); row = []; cur = ''; }
+    else cur += ch;
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row); }
+  const [head, ...body] = rows;
+  return body.filter(r => r.some(v => v.trim())).map(r => Object.fromEntries(head.map((h, i) => [h.trim(), (r[i] || '').trim()])));
+}
+async function loadSheet() {
+  const index = parseCSV(await (await fetch(sheetUrl(`gid=${SHEET.indexGid}`))).text());
+  const out = [];
+  await Promise.all(index.map(async f => {
+    if (!f.sheet) return;
+    const rows = parseCSV(await (await fetch(sheetUrl(`sheet=${encodeURIComponent(f.sheet)}`))).text());
+    rows.forEach(r => { if (r.id) out.push({ id: r.id, name: r.name || '', principle: r.principle || '', field: f.field,
+      verbs: r.verbs ? r.verbs.split(',').map(v => v.trim()).filter(Boolean) : [] }); });
+  }));
+  return out.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/* ═════════ 공통 ═════════ */
+const PALETTE = ['#344164','#664f3b','#942d40','#9f681f','#7b6182','#d55d26','#c25a6d','#758cb5','#c7935b','#e7bf92','#cfc9c3','#fcefd8'];
+const ARROW = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M1 8h13M9 3l5 5-5 5"/></svg>';
+const DOWN = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="m3 6 5 5 5-5"/></svg>';
+const UP = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M8 14V2M2 8l6-6 6 6"/></svg>';
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const fgOf = h => { const [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); return (r * 299 + g * 587 + b * 114) / 1000 >= 150 ? '#000' : '#fff'; };
+const paint = (el, c) => { el.style.setProperty('--bg', c); el.style.setProperty('--fg', fgOf(c)); };
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+const homeUrl = () => { try { return sessionStorage.getItem('haebwaya-home') || 'index.html'; } catch (e) { return 'index.html'; } };
+const ko = (a, b) => a.localeCompare(b, 'ko');
+const TV = new URLSearchParams(location.search).get('t') || 'b';   // 태그 디자인 시안
+document.body.classList.add('t-' + TV);
+const pal = shuffle(PALETTE.slice());
+const C = { name: pal[0], art: pal[1], search: pal[2], reset: pal[3], verb: pal[5], field: pal[6] };
+
+/* ═════════ 상태 ═════════ */
+let ITEMS = [], VERBS = [], FIELDS = [];
+const sel = { verbs: new Set(), field: null, q: '' };
+const hasQ = (it, q) => !q || [it.id, it.name, it.principle, it.field, ...it.verbs].some(s => s.toLowerCase().includes(q));
+const fits = (it, s) => [...s.verbs].every(v => it.verbs.includes(v)) && (!s.field || it.field === s.field) && hasQ(it, s.q);   // 동사는 모두 해당(AND)
+const countWith = s => ITEMS.reduce((n, it) => n + (fits(it, s) ? 1 : 0), 0);
+
+/* ═════════ 1줄 박스 ═════════ */
+const topEl = document.getElementById('top');
+topEl.innerHTML =
+  `<a class="box b-name" href="${homeUrl()}" style="--delay:0s"><span class="t">해봐야 아는 것들</span><span class="s">interface archiving</span></a>` +
+  `<label class="box b-search" style="--delay:.09s"><span class="t">검색</span><span class="cnt"><b id="cnt">–</b>개</span><input id="q" type="search" placeholder="이름, 원리, 동사로 찾기" autocomplete="off"></label>` +
+  `<button class="box b-reset off" id="reset" type="button"><span class="t">초기화</span><span class="s">${UP}</span></button>`;
+paint(topEl.querySelector('.b-name'), C.name); paint(topEl.querySelector('.b-search'), C.search); paint(document.getElementById('reset'), C.reset);
+
+/* 메뉴 */
+const fab = document.getElementById('fab'), menu = document.getElementById('menu');
+paint(fab, C.name);
+[
+  { label: '홈', color: C.name, href: homeUrl() },
+  { label: '아티클', color: C.art, href: 'articles.html' },
+  { label: '맨 위로', color: C.reset, act: () => scrollTo({ top: 0, behavior: 'smooth' }), icon: UP },
+].forEach((m, i) => {
+  const el = document.createElement(m.href ? 'a' : 'button');
+  if (m.href) el.href = m.href;
+  el.innerHTML = `<span>${m.label}</span>${m.href ? ARROW : m.icon}`;
+  el.style.setProperty('--i', i); paint(el, m.color);
+  el.addEventListener('click', () => { toggleMenu(false); m.act && m.act(); });
+  menu.appendChild(el);
+});
+function toggleMenu(on) { const v = menu.classList.toggle('on', on ?? !menu.classList.contains('on')); fab.classList.toggle('open', v); }   // 메뉴는 사진 위에 떠 있어서 히트맵 없음
+fab.addEventListener('click', e => { e.stopPropagation(); toggleMenu(); });
+document.addEventListener('click', e => { if (!e.target.closest('.menu, .fab')) toggleMenu(false); });
+
+/* ═════════ 태그 판 ═════════ */
+const panel = document.getElementById('panel');
+function buildPanel() {
+  const tag = (k, v) => `<button class="tag" data-k="${k}" data-v="${esc(v)}" type="button"><span>${k === 'verbs' ? '#' : ''}${esc(v)}</span><i></i></button>`;
+  if (TV === 'old') {
+    /* 판 높이(칸 수) = 동사 8열·분야 4열에 4줄씩 넣었을 때 더 긴 쪽. 첫 줄은 '동사'/'분야' 머리글 */
+    const rowsFor = (n, cols) => Math.max(1, Math.ceil((n + 1) / (cols * 4)));
+    panel.style.setProperty('--lines', Math.max(rowsFor(VERBS.length, 8), rowsFor(FIELDS.length, 4)) * 4);
+  }
+  /* 배치 (2026-10-14 수정): 동사 줄 → 그 아래 분야 줄. 각 줄은 칸 1개 높이(키 2개)로 고정.
+     키는 2개씩 위→아래로 쌓고 바로 오른쪽 열로. 태그가 늘면 아래로 내려가지 않고 오른쪽으로 계속 늘어남
+     (12칸을 넘으면 그 줄만 옆으로 스크롤) */
+  const rowsFor = () => 2;
+  panel.dataset.layout = 'stack';
+  panel.innerHTML =
+    `<div class="tags verbs" style="--rows:${rowsFor(VERBS.length)}"><span class="tag head"><span>동사</span><i>여러 개 선택</i></span>${VERBS.map(v => tag('verbs', v)).join('')}</div>` +
+    `<div class="tags fields" style="--rows:${rowsFor(FIELDS.length)}"><span class="tag head"><span>분야</span><i>하나 선택</i></span>${FIELDS.map(v => tag('field', v)).join('')}</div>`;
+  /* 동사·분야 묶음마다 한 색 */
+  [['.tags.verbs', C.verb], ['.tags.fields', C.field]].forEach(([q, c]) => { const el = panel.querySelector(q); el.style.setProperty('--grp', c); el.style.setProperty('--grp-fg', fgOf(c)); });
+  panel.querySelectorAll('.tag[data-k]').forEach(b => b.addEventListener('click', () => {
+    const v = b.dataset.v;
+    if (b.dataset.k === 'verbs') sel.verbs.has(v) ? sel.verbs.delete(v) : sel.verbs.add(v);
+    else sel.field = sel.field === v ? null : v;                // 분야는 하나만: 같은 걸 누르면 해제, 다른 걸 누르면 바뀜
+    update();
+  }));
+}
+
+/* ═════════ 결과 ═════════
+   사진을 누르면: 메인과 같은 방식 (2026-10-14)
+   - 사진 2×2는 누른 칸을 포함, 설명 2×2는 사진의 오른쪽 → 왼쪽 → 아래 → 위
+   - 열린 자리에 걸친 세로줄의 사진만 아래로 밀려남 (위에서부터 차례로, 천천히)
+   - 자리가 비면 사진이 커지고, 설명 창이 사진 쪽에서 펼쳐짐. 닫을 때는 펼쳐졌던 쪽으로 접힘 */
+const results = document.getElementById('results');
+const MOTION = { pushStep: 40, pushDur: 700, growDur: 500, closeDur: 500, infoDur: 600 };   // 메인과 같은 값
+const MOVE = 1300;                                              // 고를 때(결과가 바뀔 때) 자리 옮기는 시간
+let items = [], openEl = null, infoEl = null;
+const cellPx = () => innerWidth / 12;
+const key = (r, c) => r * 100 + c;
+const setPos = (el, p) => { el._pos = p; el.style.gridColumn = p.c; el.style.gridRow = p.r; };
+const placeEl = (el, r) => { el.style.gridColumn = `${r.c} / span ${r.w}`; el.style.gridRow = `${r.r} / span ${r.h}`; };
+const rgbOf = c => c.startsWith('#') ? [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)) : c.match(/\d+/g).map(Number);
+const fgSolid = c => { const [r, g, b] = rgbOf(c); return (r * 299 + g * 587 + b * 114) / 1000 >= 150 ? '#000' : '#fff'; };
+
+/* 결과 사진 자리: 왼쪽 위부터 차례로 (자리를 직접 지정해 둠 → 열 때 필요한 세로줄만 움직이게) */
+function layoutResults(hits) {
+  items = hits.map(cellFor);
+  items.forEach((el, i) => { el._home = { r: Math.floor(i / 12) + 1, c: i % 12 + 1 }; setPos(el, el._home); });
+  results.replaceChildren(...(items.length ? items : [Object.assign(document.createElement('p'), { className: 'msg', textContent: '맞는 인터페이스가 없어요.' })]));
+}
+function regionAt(item) {
+  const { r: r0, c: c0 } = item._home;
+  const inside = x => x.c >= 1 && x.c + x.w - 1 <= 12 && x.r >= 1;
+  const imgs = [[0, 0], [-1, 0], [0, -1], [-1, -1]].map(([dc, dr]) => ({ c: c0 + dc, r: r0 + dr, w: 2, h: 2 }));
+  const sides = [
+    { side: 'right',  at: g => ({ c: g.c + 2, r: g.r }) },
+    { side: 'left',   at: g => ({ c: g.c - 2, r: g.r }) },
+    { side: 'bottom', at: g => ({ c: g.c, r: g.r + 2 }) },
+    { side: 'top',    at: g => ({ c: g.c, r: g.r - 2 }) },
+  ];
+  for (const img of imgs) { if (!inside(img)) continue;
+    for (const sd of sides) { const info = { ...sd.at(img), w: 2, h: 2 }; if (inside(info)) return { img, info, side: sd.side }; } }
+}
+function pushDown(spot, focus) {
+  const region = { c: Math.min(spot.img.c, spot.info.c), r: Math.min(spot.img.r, spot.info.r), w: spot.img.c === spot.info.c ? 2 : 4, h: spot.img.r === spot.info.r ? 2 : 4 };
+  const taken = new Set();
+  for (let r = region.r; r < region.r + region.h; r++) for (let c = region.c; c < region.c + region.w; c++) taken.add(key(r, c));
+  for (let c = region.c; c < region.c + region.w; c++) {
+    const col = items.filter(el => el !== focus && el._home.c === c && el._home.r >= region.r).sort((a, b) => a._home.r - b._home.r);
+    let r = region.r;
+    col.forEach(el => { r = Math.max(r, el._home.r); while (taken.has(key(r, c))) r++; setPos(el, { r, c }); r++; });
+  }
+}
+const restoreAll = () => items.forEach(el => { if (el._pos.r !== el._home.r || el._pos.c !== el._home.c) setPos(el, el._home); });
+function openItem(el) {
+  const spot = regionAt(el);
+  if (!spot) return;
+  const switching = !!openEl;
+  flipOpen(() => {
+    closeDom();
+    restoreAll();
+    pushDown(spot, el);
+    openEl = el;
+    el.classList.add('open');
+    placeEl(el, spot.img);
+    const it = el._it, solid = el._solid || '#2a2622';
+    infoEl = document.createElement('div');
+    infoEl.className = 'info from-' + spot.side;
+    infoEl.style.setProperty('--solid', solid);
+    infoEl.style.setProperty('--fg', fgSolid(solid));
+    infoEl.innerHTML = `<span class="code">${esc(it.id)}</span><span class="name">${esc(it.name || '이름 (미정)')}</span>` +
+      `<p class="desc">${esc(it.principle)}</p><dl><dt>동사</dt><dd>${it.verbs.map(v => '#' + esc(v)).join(' ') || '—'}</dd><dt>분야</dt><dd>${esc(it.field)}</dd></dl>`;
+    placeEl(infoEl, spot.info);
+    el.after(infoEl);
+  }, { focus: el, opening: true, switching });
+}
+function closeDom(instant = false) {
+  if (openEl) { openEl.classList.remove('open'); setPos(openEl, openEl._home); }
+  if (infoEl) {
+    const old = infoEl;
+    if (instant) old.remove();
+    else {
+      const to = { 'from-right': 'inset(0 100% 0 0)', 'from-left': 'inset(0 0 0 100%)', 'from-bottom': 'inset(0 0 100% 0)', 'from-top': 'inset(100% 0 0 0)' };
+      const side = Object.keys(to).find(k => old.classList.contains(k)) || 'from-right';
+      old.style.animation = 'none';
+      heat.track(old, MOTION.closeDur + 50, true);                         // 설명이 접힐 때도 열
+      old.animate([{ clipPath: 'inset(0 0 0 0)' }, { clipPath: to[side] }], { duration: MOTION.closeDur, easing: 'cubic-bezier(.4, 0, .2, 1)', fill: 'forwards' }).onfinish = () => old.remove();
+    }
+  }
+  openEl = infoEl = null;
+}
+function closeItem() { if (openEl) { const f = openEl; flipOpen(() => { closeDom(); restoreAll(); }, { focus: f, opening: false }); } }
+/* 열고 닫을 때의 움직임 (메인의 flip과 같음) */
+let anims = [];
+function flipOpen(change, { focus, opening, switching = false }) {
+  anims.forEach(a => a.finish()); anims = [];
+  const before = new Map(items.map(el => [el, el.getBoundingClientRect()]));
+  change();
+  const movers = [];
+  items.forEach(el => {
+    if (el === focus) return;
+    const a = before.get(el), b = el.getBoundingClientRect();
+    if (Math.abs(a.left - b.left) < 1 && Math.abs(a.top - b.top) < 1 && Math.abs(a.width - b.width) < 1) return;
+    if ((a.bottom > 0 && a.top < innerHeight) || (b.bottom > 0 && b.top < innerHeight)) movers.push({ el, a, b });
+  });
+  const ease = 'cubic-bezier(.25, .1, .25, 1)';
+  /* 순서 (2026-10-14)
+     열 때:   [다른 사진 밀림 + 사진 커짐] 함께 → (둘 다 끝나면) 설명 나옴
+     닫을 때: 설명 닫힘 → (다 닫히면) [사진 작아짐 + 다른 사진 원래대로] 함께
+     다른 사진으로 바로 넘어갈 때: 설명 닫힘 → [작아짐 + 밀림·돌아옴 + 커짐] 함께 → 설명 */
+  const C = MOTION.closeDur;
+  const shrinkAt = C;                                            // 열려 있던 사진이 작아지기 시작하는 때 (설명이 다 닫힌 뒤)
+  const base = (opening && !switching) ? 0 : C;                  // 다른 사진들이 움직이기 시작하는 때 (커짐·작아짐과 함께)
+  const top0 = movers.length ? Math.min(...movers.map(m => m.a.top)) : 0;
+  let pushEnd = base;
+  movers.forEach(({ el, a, b }) => {
+    const resized = Math.abs(a.width - b.width) >= 1;                // 열려 있던 사진: 그 자리에서 작아짐
+    const delay = resized ? shrinkAt : base + Math.round((a.top - top0) / cellPx()) * MOTION.pushStep;   // 위에서부터 살짝 차례로
+    const dur = resized ? C : MOTION.pushDur;
+    if (!resized) pushEnd = Math.max(pushEnd, delay + dur);
+    el.style.transformOrigin = '0 0';
+    anims.push(el.animate([{ transform: `translate(${a.left - b.left}px, ${a.top - b.top}px) scale(${a.width / b.width}, ${a.height / b.height})` }, { transform: 'none' }],
+      { duration: dur, delay, easing: ease, fill: 'backwards' }));
+    heat.track(el, delay + dur + 50, resized);
+  });
+  if (!focus || !focus.isConnected) return;
+  const a = before.get(focus), b = focus.getBoundingClientRect();
+  const gDelay = base;                                           // 커짐·작아짐은 다른 사진들의 움직임과 함께 시작
+  const gDur = opening ? MOTION.growDur : C;
+  focus.style.transformOrigin = '0 0';
+  anims.push(focus.animate([
+    { transform: `translate(${a.left - b.left}px, ${a.top - b.top}px) scale(${a.width / b.width})` },
+    { transform: 'none' }], { duration: gDur, delay: gDelay, easing: ease, fill: 'backwards' }));
+  heat.track(focus, gDelay + gDur + 50, true);
+  if (opening && infoEl) {
+    infoEl.style.setProperty('--info-delay', Math.max(pushEnd, gDelay + gDur) / 1000 + 's');   // 밀림·커짐이 다 끝난 뒤 설명이 나옴
+    infoEl.style.setProperty('--info-dur', MOTION.infoDur / 1000 + 's');
+    heat.track(infoEl, Math.max(pushEnd, gDelay + gDur) + MOTION.infoDur + 50, true);   // 설명이 밀려 나올 때도 열
+  }
+}
+/* 고를 때(결과가 바뀔 때): 사진들이 새 자리로 천천히 */
+function flipFilter(mutate) {
+  const before = new Map(items.map(e => [e, e.getBoundingClientRect()]));
+  mutate();
+  items.forEach(e => {
+    const a = before.get(e); if (!a) return;
+    const b = e.getBoundingClientRect();
+    const dx = a.left - b.left, dy = a.top - b.top;
+    if (!dx && !dy) return;
+    heat.track(e, MOVE + 50);
+    e.animate([{ transform: `translate(${dx}px,${dy}px)` }, { transform: 'none' }], { duration: MOVE, easing: 'cubic-bezier(.3,0,.2,1)' });
+  });
+}
+results.addEventListener('click', e => {
+  const it = e.target.closest('.item');
+  if (it) { it === openEl ? closeItem() : openItem(it); return; }
+  if (!e.target.closest('.info')) closeItem();
+});
+addEventListener('keydown', e => { if (e.key === 'Escape') { closeItem(); toggleMenu(false); } });
+function avgColor(img) {                                         // 사진 평균색 (파일을 직접 열면 브라우저가 막아서 null)
+  try { const c = document.createElement('canvas'); c.width = c.height = 1; const x = c.getContext('2d'); x.drawImage(img, 0, 0, 1, 1); const d = x.getImageData(0, 0, 1, 1).data; return `rgb(${d[0]},${d[1]},${d[2]})`; } catch (e) { return null; }
+}
+let cells = new Map();                                          // id → 아이템 칸 (다시 만들지 않고 넣다 뺐다 함)
+/* 사진 오기 전 단색 (메인의 미리 계산해 둔 색을 돌려 씀) → 사진이 오면 그 사진 평균색 */
+const SOLIDS = ['#4a3b35','#958676','#3c3126','#7f482b','#8a7a6b','#d3c2ad','#251d16','#443a2f','#27211d','#b4a391','#cab59d','#ba9079','#ccbaa4','#c6ac86','#37262a','#201c1e','#c0a787','#181312','#a28b70','#29231d','#aba492','#b5987d','#7a7c80','#8b8e92'];
+const T0 = performance.now(), FAST = 400, LOAD_STEP = 40, HALF_HOLD = 140;   // 메인과 같은 값
+const revealQueue = []; let revealing = false;
+const inView = el => { if (!el.isConnected) return false; const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; };
+const showNow = el => { el.style.setProperty('--img', `url(${el._src})`); el.classList.add('done'); };
+function nextReveal() {
+  const el = revealQueue.shift();
+  if (!el) { revealing = false; return; }
+  revealing = true;
+  el.style.setProperty('--img', `url(${el._src})`);
+  el.classList.add(Math.random() < 0.5 ? 'half-x' : 'half-y');            // 탁: 반
+  setTimeout(() => { el.classList.remove('half-x', 'half-y'); el.classList.add('done'); }, HALF_HOLD);   // 탁: 사진
+  setTimeout(nextReveal, LOAD_STEP);
+}
+function cellFor(it) {
+  if (cells.has(it.id)) return cells.get(it.id);
+  const el = document.createElement('div');
+  el.className = 'item'; el.dataset.code = it.id; el._it = it;
+  const pre = (window.IMAGE_COLORS || {})[it.id];
+  if (pre) el._solid = pre;
+  el.style.setProperty('--solid', pre || SOLIDS[cells.size % SOLIDS.length]);   // 미리 계산한 그 사진의 평균색
+  const im = new Image();
+  im.onload = () => {
+    el._src = im.src;
+    if (!pre) { const avg = avgColor(im); if (avg) { el._solid = avg; el.style.setProperty('--solid', avg); } }
+    if (performance.now() - T0 > FAST && inView(el)) {                     // 늦게 왔고 화면에 보이면 단계대로 (왼쪽 위부터)
+      revealQueue.push(el); revealQueue.sort((a, b) => items.indexOf(a) - items.indexOf(b));
+      if (!revealing) nextReveal();
+    } else showNow(el);
+  };
+  im.onerror = () => el.classList.add('noimg');                // 아직 사진이 없는 id
+  im.src = imgPath(it.id);
+  cells.set(it.id, el);
+  return el;
+}
+
+/* ═════════ 갱신: 고를 때마다 바로 ═════════ */
+const sum = document.getElementById('sum');
+paint(sum, C.name);
+function update() {
+  const hits = ITEMS.filter(it => fits(it, sel));
+  document.getElementById('cnt').textContent = hits.length;
+  /* 태그: 고른 건 색 박스, 숫자 = 이걸 (더) 고르면 남는 개수, 0이면 흐리게 */
+  panel.querySelectorAll('.tag[data-k]').forEach(b => {
+    const v = b.dataset.v, on = b.dataset.k === 'verbs' ? sel.verbs.has(v) : sel.field === v;
+    const n = on ? hits.length : countWith(b.dataset.k === 'verbs' ? { ...sel, verbs: new Set([...sel.verbs, v]) } : { ...sel, field: v });
+    b.classList.toggle('on', on); b.classList.toggle('zero', !on && n === 0);
+    b.querySelector('i').textContent = n;
+    if (on && TV !== 'b') paint(b, b.dataset.k === 'verbs' ? C.verb : C.field);
+    b._n = n;
+  });
+  if (TV === 'c') {                                             // 남는 개수 → 히트맵 색 (검정2:파랑3:초록2:노랑1:빨강2)
+    const tags = [...panel.querySelectorAll('.tag[data-k]')], max = Math.max(1, ...tags.map(t => t._n));
+    const S = [[0, 40, 50, 120], [.35, 30, 40, 220], [.6, 0, 235, 60], [.75, 255, 230, 0], [.9, 235, 0, 10], [1, 235, 0, 10]];
+    tags.forEach(t => { const v = .15 + .85 * t._n / max; let i = 1; while (i < S.length - 1 && v > S[i][0]) i++;
+      const [a, c] = [S[i - 1], S[i]], k = (v - a[0]) / (c[0] - a[0]);
+      t.style.setProperty('--heat', `rgb(${[1, 2, 3].map(j => Math.round(a[j] + (c[j] - a[j]) * k)).join(',')})`); });
+  }
+  const any = sel.verbs.size || sel.field || sel.q;
+  document.getElementById('reset').classList.toggle('off', !any);
+  /* 결과: 맞는 것만 왼쪽 위부터 */
+  anims.forEach(a => a.finish()); anims = [];
+  closeDom(true);
+  flipFilter(() => layoutResults(hits));
+}
+document.getElementById('q').addEventListener('input', e => { sel.q = e.target.value.trim().toLowerCase(); update(); });
+document.getElementById('reset').addEventListener('click', () => { sel.verbs.clear(); sel.field = null; sel.q = ''; document.getElementById('q').value = ''; update(); });
+sum.addEventListener('click', () => scrollTo({ top: 0, behavior: 'smooth' }));
+addEventListener('scroll', () => sum.classList.toggle('show', scrollY > innerWidth / 24), { passive: true });   // 반 칸 이상 내리면 (메인 메뉴와 같은 기준)
+
+const HEAT = {
+  heat: true,
+  heatMax: 0.6,              // 가장 뜨거운 색의 위치 (0.6 = 빨강)
+  heatBlob: 0.6,             // 움직이는 사진 덩어리 열의 번짐 크기 (칸 대비)
+  heatScroll: [0.06, 0.002],  // 스크롤 잔상 세기 (최대, 스크롤 1px당)
+  heatScrollBlob: 0.25,      // 스크롤 잔상의 번짐 크기 (칸 대비)
+  heatFollow: 0.7,           // 스크롤할 때 열이 페이지를 따라가는 정도
+};
+/* ═════════ 히트맵 (메인과 같은 규칙: 마우스 · 움직이는 사진 · 스크롤) — 빈 곳(검정)으로만 보임 ═════════ */
+const heat = (() => {
+  const S = 0.25;                       // 해상도 (화면의 1/4)
+  const canvas = document.getElementById('heat');
+  if (!HEAT.heat) { canvas.remove(); return { track() {} }; }     // 히트맵 끈 버전: 빈 칸은 그냥 검정
+  const ctx = canvas.getContext('2d');
+  const small = document.createElement('canvas'), sctx = small.getContext('2d');
+  let W, H, fw, fh, T, B, M, Q, img, running = false, lastScroll = scrollY, acc = 0;
+  const movers = new Map();
+  const mouse = { x: 0, y: 0, has: false, trail: [] };
+  function resize() {
+    W = innerWidth; H = innerHeight;
+    canvas.width = W; canvas.height = H;
+    fw = Math.ceil(W * S); fh = Math.ceil(H * S);
+    small.width = fw; small.height = fh;
+    T = new Float32Array(fw * fh); B = new Float32Array(fw * fh);
+    M = new Float32Array(fw * fh); Q = new Float32Array(fw * fh);
+    img = sctx.createImageData(fw, fh);
+  }
+  function add(x, y, w, h, k, soft) {
+    const m = soft * 3;
+    const x0 = Math.max(0, Math.floor((x - m) * S)), x1 = Math.min(fw - 1, Math.ceil((x + w + m) * S));
+    const y0 = Math.max(0, Math.floor((y - m) * S)), y1 = Math.min(fh - 1, Math.ceil((y + h + m) * S));
+    for (let j = y0; j <= y1; j++) {
+      const py = j / S, dy = Math.max(y - py, 0, py - (y + h));
+      for (let i = x0; i <= x1; i++) {
+        const px = i / S, dx = Math.max(x - px, 0, px - (x + w));
+        const v = Math.exp(-(dx * dx + dy * dy) / (2 * soft * soft));
+        if (v < 0.01) continue;
+        const n = j * fw + i; T[n] = Math.min(1, T[n] + v * k);
+      }
+    }
+  }
+  /* 덩어리 열: 함께 움직이는 사진들을 한 장의 판(M)에 찍고, 크게 흐리게 한 뒤 열로 더함
+     → 사진 하나하나의 네모(그리드)가 아니라 한 덩어리의 잔상으로 남음 */
+  let massDirty = false;
+  function stamp(x, y, w, h) {
+    const x0 = Math.max(0, Math.floor(x * S)), x1 = Math.min(fw, Math.ceil((x + w) * S));
+    const y0 = Math.max(0, Math.floor(y * S)), y1 = Math.min(fh, Math.ceil((y + h) * S));
+    for (let j = y0; j < y1; j++) M.fill(1, j * fw + x0, j * fw + x1);
+    if (x1 > x0 && y1 > y0) massDirty = true;
+  }
+  function blur(r) {                    // 가로·세로 상자 흐림 (두 번 = 부드러운 번짐)
+    for (let pass = 0; pass < 2; pass++) {
+      for (let j = 0; j < fh; j++) {     // 가로 → Q
+        const o = j * fw; let s = 0;
+        for (let i = -r; i <= r; i++) s += M[o + Math.min(fw - 1, Math.max(0, i))];
+        for (let i = 0; i < fw; i++) {
+          Q[o + i] = s / (2 * r + 1);
+          s += M[o + Math.min(fw - 1, i + r + 1)] - M[o + Math.max(0, i - r)];
+        }
+      }
+      for (let i = 0; i < fw; i++) {     // 세로 → M
+        let s = 0;
+        for (let j = -r; j <= r; j++) s += Q[Math.min(fh - 1, Math.max(0, j)) * fw + i];
+        for (let j = 0; j < fh; j++) {
+          M[j * fw + i] = s / (2 * r + 1);
+          s += Q[Math.min(fh - 1, j + r + 1) * fw + i] - Q[Math.max(0, j - r) * fw + i];
+        }
+      }
+    }
+  }
+  function flushMass(k, size = HEAT.heatBlob) {
+    if (!massDirty) return;
+    blur(Math.max(1, Math.round(innerWidth / 12 * S * size)));
+    for (let n = 0; n < M.length; n++) if (M[n] > 0.01) T[n] = Math.min(1, T[n] + M[n] * k);
+    M.fill(0); massDirty = false;
+  }
+  function color(v) {                    // 검정 → 파랑 → 초록 → 노랑 → 빨강 (HEAT.heatMax에서 멈춤)
+    const S = [[0.0, 0, 0, 0], [0.06, 0, 0, 0], [0.21, 30, 40, 220], [0.36, 0, 235, 60], [0.45, 255, 230, 0], [0.54, 235, 0, 10], [0.6, 235, 0, 10], [1, 235, 0, 10]];   // 검정 2 : 파랑 3 : 초록 2 : 노랑 1 : 빨강 2 (HEAT.heatMax 0.6까지를 10으로 나눈 비율, 각 색 구간의 가운데를 기준점으로 그라데이션)
+    let i = 1; while (i < S.length - 1 && v > S[i][0]) i++;
+    const [a, b] = [S[i - 1], S[i]], t = Math.min(1, Math.max(0, (v - a[0]) / (b[0] - a[0])));
+    return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t];
+  }
+  function frame() {
+    /* 스크롤: 열은 페이지를 일부만 따라감(HEAT.heatFollow) → 화면 위를 지나가는 아이템이 빈 칸에 잔상을 남김 */
+    const dyScroll = scrollY - lastScroll;
+    acc += dyScroll * S * HEAT.heatFollow; lastScroll = scrollY;
+    if (dyScroll) {
+      const cell = innerWidth / 12, k = Math.min(HEAT.heatScroll[0], Math.abs(dyScroll) * HEAT.heatScroll[1]);
+      document.querySelectorAll('.item, .box, .tag').forEach(el => {   // 화면에 보이는 사진·박스·태그
+        const r = el.getBoundingClientRect();
+        if (r.top > H || r.bottom < 0) return;
+        stamp(r.left, r.top, r.width, r.height);
+      });
+      flushMass(k, HEAT.heatScrollBlob);
+    }
+    const n = Math.trunc(acc);
+    if (n) {
+      acc -= n;
+      if (Math.abs(n) >= fh) T.fill(0);
+      else if (n > 0) { T.copyWithin(0, n * fw); T.fill(0, (fh - n) * fw); }
+      else { T.copyWithin(-n * fw, 0, (fh + n) * fw); T.fill(0, 0, -n * fw); }
+    }
+    /* 마우스 */
+    mouse.trail.forEach(p => add(p.x, p.y, 0, 0, p.k, 26));
+    mouse.trail.length = 0;
+    /* 밀려나는 아이템: 지금 있는 자리 전체에 열 → 빈 칸을 지나가면 그 자리에 자국 */
+    const now = performance.now();
+    const big = [];
+    movers.forEach((m, el) => {
+      if (now > m.until || !el.isConnected) { movers.delete(el); return; }
+      if (m.big) { big.push(el); return; }
+      const r = el.getBoundingClientRect();
+      stamp(r.left, r.top, r.width, r.height);
+    });
+    flushMass(0.025);
+    /* 커지고 작아지는 사진: 더 뜨겁고 더 넓게 번짐 → 둘레 빈 곳·움직이며 잠깐 생기는 틈으로 열이 보임 */
+    if (big.length) {
+      big.forEach(el => { const r = el.getBoundingClientRect(); stamp(r.left, r.top, r.width, r.height); });
+      flushMass(0.06, 1.1);
+    }
+    /* 식고 퍼짐 */
+    let max = 0;
+    for (let j = 0; j < fh; j++) for (let i = 0; i < fw; i++) {
+      const k = j * fw + i;
+      const l = i > 0 ? T[k - 1] : T[k], r = i < fw - 1 ? T[k + 1] : T[k];
+      const u = j > 0 ? T[k - fw] : T[k], d = j < fh - 1 ? T[k + fw] : T[k];
+      B[k] = (T[k] * 0.6 + (l + r + u + d) * 0.1) * 0.986;
+      if (B[k] > max) max = B[k];
+    }
+    [T, B] = [B, T];
+    const px = img.data;
+    for (let k = 0, p = 0; k < T.length; k++, p += 4) {
+      const v = T[k];
+      if (v < 0.01) { px[p + 3] = 0; continue; }
+      const c = color(Math.min(1, v) * HEAT.heatMax);   // 검정 바탕 위에서 남색 → 파랑 → 보라 → 빨강 (가장 뜨거운 곳 = 빨강, 노랑·흰색은 안 씀)
+      px[p] = c[0]; px[p + 1] = c[1]; px[p + 2] = c[2];
+      px[p + 3] = 255 * Math.min(1, v / 0.12);
+    }
+    sctx.putImageData(img, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(small, 0, 0, W, H);
+    if (max < 0.004 && !movers.size && !mouse.trail.length && !dyScroll) { T.fill(0); ctx.clearRect(0, 0, W, H); running = false; return; }
+    requestAnimationFrame(frame);
+  }
+  function wake() { if (!running) { running = true; lastScroll = scrollY; acc = 0; requestAnimationFrame(frame); } }
+  /* 마우스: 지나간 경로를 따라 열을 남김 (히트맵은 사진·박스 아래 층이라 빈 칸에서만 보임) */
+  addEventListener('pointermove', e => {
+    const x = e.clientX, y = e.clientY;
+    if (mouse.has) {
+      const dx = x - mouse.x, dy = y - mouse.y, dist = Math.hypot(dx, dy);
+      const steps = Math.max(1, Math.ceil(dist / 10)), k = Math.min(dist / 30, 1) * 0.5;
+      for (let s = 1; s <= steps; s++) mouse.trail.push({ x: mouse.x + dx * s / steps, y: mouse.y + dy * s / steps, k: k / steps });
+    }
+    mouse.x = x; mouse.y = y; mouse.has = true;
+    wake();
+  }, { passive: true });
+  document.addEventListener('pointerleave', () => { mouse.has = false; });
+  addEventListener('scroll', () => { if (!running) { running = true; requestAnimationFrame(frame); } }, { passive: true });   // 스크롤도 열을 만듦
+  resize();
+  addEventListener('resize', resize);
+  return { track(el, ms, big = false) { movers.set(el, { until: performance.now() + ms, big }); wake(); } };   // big: 커지고 작아지는 사진
+})();
+
+
+/* ═════════ 시작 ═════════ */
+document.querySelectorAll('.box').forEach((b, i) => heat.track(b, 900 + i * 90));   // 박스가 펼쳐질 때도 열
+
+(async () => {
+  try { ITEMS = await loadSheet(); }
+  catch (e) { console.warn('시트를 못 불러옴:', e); results.innerHTML = '<p class="msg">데이터를 불러오지 못했어요.</p>'; return; }
+  VERBS = [...new Set(ITEMS.flatMap(it => it.verbs))].sort(ko);
+  FIELDS = [...new Set(ITEMS.map(it => it.field))].sort(ko);
+  buildPanel();
+  update();
+})();
+</script>
+</body>
 </html>
