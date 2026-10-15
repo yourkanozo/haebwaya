@@ -84,11 +84,11 @@
   /* ───────── 박스 (메뉴) ─────────
      색은 팔레트에서 랜덤, 자리·크기는 고정 (움직이지 않음) */
   .box { color: var(--fg); display: block; z-index: 2; }   /* 밀려나는 아이템은 박스 아래로 지나감 (열린 아이템·설명은 위) */
-  .box-in { position: absolute; inset: 0; background: var(--bg); animation: boxIn .8s var(--ease) var(--delay, 0s) backwards; }
-  .box.right .box-in { animation-name: boxInR; }
+  /* 예외 규칙 (2026-10-14): 처음 불러올 때 박스는 펼쳐지는 움직임 없이 그냥 '딱' 나타남 (히트맵도 없음). 모든 페이지 같음 */
+  .box-in { position: absolute; inset: 0; background: var(--bg); }
   @keyframes boxIn  { from { clip-path: inset(0 100% 100% 0); } to { clip-path: inset(0); } }
   @keyframes boxInR { from { clip-path: inset(0 0 100% 100%); } to { clip-path: inset(0); } }
-  .box .t, .box .s, .box .n { position: absolute; line-height: 1; white-space: nowrap; animation: fade .4s ease-out calc(var(--delay, 0s) + .6s) backwards; }
+  .box .t, .box .s, .box .n { position: absolute; line-height: 1; white-space: nowrap; }
   .box .t { left: var(--gut); top: var(--gut); font-size: var(--fs-l); }
   .box .s { right: var(--gut); bottom: var(--gut); font-size: var(--fs-s); display: flex; align-items: center; gap: calc(var(--u) * 10); }
   .box .n { right: var(--gut); bottom: var(--gut); font-size: var(--fs-xl); }
@@ -192,19 +192,24 @@ const CONFIG = {
   path: id => `images/${id}.webp`,  // 사진 파일 이름 = 시트 id (WebP로 줄인 것)
   spreadTries: 300,          // 박스 배치를 이만큼 뽑아 보고 가장 멀리 떨어진 것을 고름
   haloImage: [0.1, 0.3],    // 박스 둘레 칸 중 사진이 들어가도 되는 비율 (최소, 최대)
-  holeRatio: [0.16, 0.24],   // 빈 칸 비율 (아이템·박스 칸 수 대비, 최소)
+  holeRatio: [0.24, 0.30],   // 빈 칸 비율 (아이템·박스 칸 수 대비, 최소) — 2026-10-14: 16% → 24%
   blockSizes: [              // 빈 칸 덩어리 크기(가로×세로)와 나오는 비중
     { w: 2, h: 1, p: 5 }, { w: 2, h: 2, p: 3 }, { w: 2, h: 3, p: 1.5 }, { w: 3, h: 2, p: 1.5 }, { w: 3, h: 3, p: 1 },
   ],
-  fast: 400,                 // 이 시간 안에 사진이 로딩되면 단계 없이 바로 보여줌(ms)
   loadStep: 40,              // 로딩 단계가 아이템마다 차례로 바뀌는 간격(ms)
   halfHold: 140,             // '반' 단계로 머무는 시간(ms)
   heat: true,                // 히트맵 켜기/끄기
   heatMax: 0.6,              // 가장 뜨거운 색의 위치 (0.6 = 빨강. 0.75면 주황, 0.9면 노랑, 1이면 흰색까지)
-  heatBlob: 0.6,             // 움직이는 사진 덩어리 열의 번짐 크기 (칸 대비). 클수록 사진 하나하나가 안 보이고 한 덩어리로 번짐
-  heatScroll: [0.06, 0.002],  // 스크롤 잔상 세기 (최대, 스크롤 1px당)
-  heatScrollBlob: 0.25,      // 스크롤 잔상의 번짐 크기 (칸 대비). 작을수록 빈 칸 가장자리에만 남음
+  heatBlob: 0.25,            // 움직이는 사진 열의 가장자리 흐림 (칸 대비). 작을수록 각짐 (10/14: 0.6 둥긂 → 0.1 너무 각짐 → 0.25)
+  heatPad: [0.15, 0.25],    // 움직이는 사진의 열을 사진보다 이만큼(칸 대비) 크게 찍음: [밀리는 사진, 커지고 작아지는 사진·설명]. 세기는 그대로, 사진 밖으로 드러남
+  heatMove: [0.065, 0.075],  // 10/14: [0.05, 0.07] → [0.065, 0.075] 열이 더 빨리 올라오게. 움직이는 아이템이 지나간 길에 남기는 열: [밀리는 사진, 커지고 작아지는 사진·설명] (10/14 '따라가는 열'로 바꾸며 새로)
+  heatSpeed: 0.02,           // 한 프레임에 칸의 이만큼 움직이면 최대 세기 (느리게 움직이면 옅게)
+  heatArea: 0.4,             // 자리는 그대로이고 잘려 나오기만 하는 것(설명 접힘·개요 등)의 세기 (0~1)
+  heatScroll: [0.16, 90],    // 스크롤 잔상: [최대 세기, 이 속도(px/프레임) 이상일 때 최대]. 속도의 1.5제곱으로 커짐 → 보통 스크롤도 파랑이 보이고, 빠를수록 진해짐
+  heatScrollBlob: 0.12,      // 스크롤 잔상의 번짐 크기 (칸 대비). 작을수록 빈 칸 가장자리에만 남음
   heatFollow: 0.7,           // 스크롤할 때 열이 페이지를 따라가는 정도 (1 = 페이지에 붙음, 0 = 화면에 고정 → 잔상이 길게 남음)
+  heatSpread: 0.07,           // 식으면서 옆으로 퍼지는 정도. 클수록 둥글게 뭉개짐 (10/14: 0.1 → 0.04 → 0.07)
+  heatCool: 0.965,           // 한 프레임마다 남는 열 (1에 가까울수록 늦게 식음). 10/14: 0.986 → 0.975 (더 빨리 식게) → 0.965 (꼬리 짧게)
   boxesMove: false,          // true: 박스도 아이템과 같은 규칙으로 아래로 밀려남
   /* 움직임 속도 (2026-10-14: 순서가 또렷하게 지켜지도록 한 단계씩 끝나고 다음이 시작 — 대신 각각은 조금 빠르게) */
   pushStep: 40,              // 위아래 줄 사이 출발 간격(ms) — 위에서부터 살짝 차례로
@@ -452,30 +457,41 @@ function build() {
 
 /* ═════════ 로딩 ═════════
    아이템은 처음엔 사진의 평균색(미리 계산한 값)으로 칠해져 있고, 실제 사진이 도착하면 바뀜.
-   - 사진이 금방(CONFIG.fast 안에) 왔거나 화면 밖이면: 바로 사진
-   - 늦게 왔고 화면에 보이면: 왼쪽 위부터 차례로 단색 → 반 → 사진 */
+   - 화면에 보이면: 왼쪽 위부터 차례로 단색 → 반 → 사진 (빨리 와도 항상)
+   - 화면 밖이면: 단색으로 기다렸다가, 스크롤해서 보일 때 같은 방식으로 탁탁 */
 const T0 = performance.now();
 const revealQueue = [];
 let revealing = false;
 const inView = el => { const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; };
 function showNow(el) { el.style.setProperty('--img', `url(${el._data.src})`); el.classList.add('done'); }
-function onImageReady(code) {
-  const slow = performance.now() - T0 > CONFIG.fast;
-  items.forEach(el => {
-    if (el._data.code !== code || el.classList.contains('done')) return;
-    if (slow && inView(el)) revealQueue.push(el); else showNow(el);
-  });
-  revealQueue.sort((a, b) => a._i - b._i);
+/* 2026-10-14: 모든 사진은 '로딩처럼' 나옴 — 화면에 보이면 왼쪽 위부터 탁탁, 화면 밖이면 기다렸다가 스크롤해서 보일 때 탁탁 */
+const byPos = (a, b) => { const A = a.getBoundingClientRect(), B = b.getBoundingClientRect(); return (A.top - B.top) || (A.left - B.left); };
+const seen = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  seen.unobserve(e.target);
+  if (e.target._ready && !e.target.classList.contains('done')) queueReveal(e.target);
+}));
+function queueReveal(el) {
+  if (revealQueue.includes(el)) return;
+  revealQueue.push(el); revealQueue.sort(byPos);
   if (!revealing) nextReveal();
 }
+function onImageReady(code) {
+  items.forEach(el => {
+    if (el._data.code !== code || el.classList.contains('done')) return;
+    el._ready = true;
+    if (inView(el)) queueReveal(el); else seen.observe(el);   // 화면 밖: 보일 때까지 단색으로 기다림
+  });
+}
 function nextReveal() {
-  const el = revealQueue.shift();
+  let el = revealQueue.shift();
+  while (el && !inView(el)) { seen.observe(el); el = revealQueue.shift(); }   // 차례 오기 전에 화면 밖으로 나갔으면 다시 기다림
   if (!el) { revealing = false; return; }
   revealing = true;
   el.style.setProperty('--img', `url(${el._data.src})`);
   el.classList.add(Math.random() < 0.5 ? 'half-x' : 'half-y');            // 탁: 반
   setTimeout(() => { el.classList.remove('half-x', 'half-y'); el.classList.add('done'); }, CONFIG.halfHold);   // 탁: 사진
-  setTimeout(nextReveal, CONFIG.loadStep);
+  setTimeout(nextReveal, Math.max(12, Math.min(CONFIG.loadStep, 600 / (revealQueue.length + 1))));   // 한꺼번에 많이 보이면 간격을 좁혀 한 화면이 1초 남짓에 다 나오게
 }
 /* 사진의 평균색 (파일을 직접 열면 브라우저가 막아서 null → 미리 정한 색 유지) */
 function avgColor(img) {
@@ -618,7 +634,7 @@ function closeDom() {
     const to = { 'from-right': 'inset(0 100% 0 0)', 'from-left': 'inset(0 0 0 100%)', 'from-bottom': 'inset(0 0 100% 0)', 'from-top': 'inset(100% 0 0 0)' };
     const side = Object.keys(to).find(k => old.classList.contains(k)) || 'from-right';
     old.style.animation = 'none';
-    if (CONFIG.heat) heat.track(old, CONFIG.closeDur + 50, true);   // 설명이 접힐 때도 열
+    if (CONFIG.heat) heat.track(old, CONFIG.closeDur + 50, true, true);   // 설명이 접힐 때도 열
     old.animate([{ clipPath: 'inset(0 0 0 0)' }, { clipPath: to[side] }],
       { duration: CONFIG.closeDur, easing: 'cubic-bezier(.4, 0, .2, 1)', fill: 'forwards' }).onfinish = () => old.remove();
   }
@@ -677,7 +693,7 @@ function flip(change, { focus, opening, switching = false }) {
   if (opening && infoEl) {
     infoEl.style.setProperty('--info-delay', Math.max(pushEnd, gDelay + gDur) / 1000 + 's');   // 밀림·커짐이 다 끝난 뒤 설명이 나옴
     infoEl.style.setProperty('--info-dur', CONFIG.infoDur / 1000 + 's');
-    if (CONFIG.heat) heat.track(infoEl, Math.max(pushEnd, gDelay + gDur) + CONFIG.infoDur + 50, true);   // 설명이 밀려 나올 때도 열
+    if (CONFIG.heat) { const ie = infoEl; setTimeout(() => ie.isConnected && heat.track(ie, CONFIG.infoDur + 50, true), Math.max(pushEnd, gDelay + gDur)); }   // 설명이 밀려 나오기 시작할 때부터 열 (그 전엔 숨어 있으므로 열 없음 → 빈 자리에 빨간 네모가 생기지 않게)
   }
 }
 grid.addEventListener('click', e => {
@@ -725,7 +741,7 @@ function buildOverview() {
 function toggleOverview(on) {
   if (!ovEl) return;
   on = on ?? !ovEl.classList.contains('on');
-  if (on !== ovEl.classList.contains('on') && CONFIG.heat) heat.track(ovEl, 700, true);   // 개요가 펼쳐지고 접힐 때도 열
+  if (on !== ovEl.classList.contains('on') && CONFIG.heat) heat.track(ovEl, 700, true, true);   // 개요가 펼쳐지고 접힐 때도 열
   ovEl.classList.toggle('on', on);
   if (on) { ovEl.firstElementChild.scrollTop = 0; ovEl._markMore(); }
 }
@@ -739,7 +755,6 @@ function buildMenu() {
     { label: '개요', color: colors.name, act: () => { scrollTo({ top: 0, behavior: 'smooth' }); setTimeout(() => toggleOverview(true), 600); } },
     { label: '아티클', color: colors.article, href: CONFIG.pages.article },
     { label: '탐색', color: colors.explore, href: CONFIG.pages.explore },
-    { label: '맨 위로', color: colors.all, act: () => scrollTo({ top: 0, behavior: 'smooth' }), icon: MENU_ICON },
   ];
   entries.forEach((m, i) => {
     const el = document.createElement(m.href ? 'a' : 'button');
@@ -797,12 +812,14 @@ const heat = (() => {
   /* 덩어리 열: 함께 움직이는 사진들을 한 장의 판(M)에 찍고, 크게 흐리게 한 뒤 열로 더함
      → 사진 하나하나의 네모(그리드)가 아니라 한 덩어리의 잔상으로 남음 */
   let massDirty = false;
-  function stamp(x, y, w, h) {
+  function stamp(x, y, w, h, v = 1) {
     const x0 = Math.max(0, Math.floor(x * S)), x1 = Math.min(fw, Math.ceil((x + w) * S));
     const y0 = Math.max(0, Math.floor(y * S)), y1 = Math.min(fh, Math.ceil((y + h) * S));
-    for (let j = y0; j < y1; j++) M.fill(1, j * fw + x0, j * fw + x1);
+    if (v >= 1) for (let j = y0; j < y1; j++) M.fill(1, j * fw + x0, j * fw + x1);
+    else for (let j = y0; j < y1; j++) for (let i = j * fw + x0, e = j * fw + x1; i < e; i++) if (M[i] < v) M[i] = v;
     if (x1 > x0 && y1 > y0) massDirty = true;
   }
+  function stampPad(r, pad, v = 1) { const p = innerWidth / 12 * pad; stamp(r.left - p, r.top - p, r.width + 2 * p, r.height + 2 * p, v); }
   function blur(r) {                    // 가로·세로 상자 흐림 (두 번 = 부드러운 번짐)
     for (let pass = 0; pass < 2; pass++) {
       for (let j = 0; j < fh; j++) {     // 가로 → Q
@@ -829,18 +846,23 @@ const heat = (() => {
     for (let n = 0; n < M.length; n++) if (M[n] > 0.01) T[n] = Math.min(1, T[n] + M[n] * k);
     M.fill(0); massDirty = false;
   }
-  function color(v) {                    // 검정 → 파랑 → 초록 → 노랑 → 빨강 (CONFIG.heatMax에서 멈춤)
-    const S = [[0.0, 0, 0, 0], [0.06, 0, 0, 0], [0.21, 30, 40, 220], [0.36, 0, 235, 60], [0.45, 255, 230, 0], [0.54, 235, 0, 10], [0.6, 235, 0, 10], [1, 235, 0, 10]];   // 검정 2 : 파랑 3 : 초록 2 : 노랑 1 : 빨강 2 (CONFIG.heatMax 0.6까지를 10으로 나눈 비율, 각 색 구간의 가운데를 기준점으로 그라데이션)
-    let i = 1; while (i < S.length - 1 && v > S[i][0]) i++;
-    const [a, b] = [S[i - 1], S[i]], t = Math.min(1, Math.max(0, (v - a[0]) / (b[0] - a[0])));
-    return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t];
+  function color(v) {                    // 예전 색 (2026-10-15 되돌림): 남색 → 파랑 → 보라 → 빨강 (heatMax 0.6에서 멈춤 → 주황·노랑·흰색은 안 씀)
+    let r, g, b, t;
+    if (v < 0.15)      { t = v / 0.15;          r = 5 + t * 5;     g = 5 + t * 15;   b = 20 + t * 70; }
+    else if (v < 0.30) { t = (v - 0.15) / 0.15; r = 10 + t * 20;   g = 20 + t * 20;  b = 90 + t * 130; }
+    else if (v < 0.45) { t = (v - 0.30) / 0.15; r = 30 + t * 90;   g = 40 - t * 20;  b = 220 - t * 80; }
+    else if (v < 0.60) { t = (v - 0.45) / 0.15; r = 120 + t * 135; g = 20 + t * 20;  b = 140 - t * 130; }
+    else if (v < 0.75) { t = (v - 0.60) / 0.15; r = 255;           g = 40 + t * 130; b = 10; }
+    else if (v < 0.90) { t = (v - 0.75) / 0.15; r = 255;           g = 170 + t * 75; b = t * 10; }
+    else               { t = (v - 0.90) / 0.10; r = 255;           g = 245 + t * 10; b = 10 + t * 245; }
+    return [r, g, b];
   }
   function frame() {
     /* 스크롤: 열은 페이지를 일부만 따라감(CONFIG.heatFollow) → 화면 위를 지나가는 아이템이 빈 칸에 잔상을 남김 */
     const dyScroll = scrollY - lastScroll;
     acc += dyScroll * S * CONFIG.heatFollow; lastScroll = scrollY;
     if (dyScroll) {
-      const cell = innerWidth / 12, k = Math.min(CONFIG.heatScroll[0], Math.abs(dyScroll) * CONFIG.heatScroll[1]);
+      const cell = innerWidth / 12, k = CONFIG.heatScroll[0] * Math.min(1, Math.abs(dyScroll) / CONFIG.heatScroll[1]) ** 1.5;
       items.forEach(el => {
         const top = (el._pos.r - 1) * cell - scrollY;
         if (top > H || top + cell < 0) return;
@@ -861,26 +883,36 @@ const heat = (() => {
     mouse.trail.length = 0;
     /* 밀려나는 아이템: 지금 있는 자리 전체에 열 → 빈 칸을 지나가면 그 자리에 자국 */
     const now = performance.now();
-    const big = [];
+    /* 움직이는 아이템 (2026-10-14): 마우스처럼 '지나간 길'에만 열을 남김
+       - 매 프레임 직전 자리와 지금 자리를 합친 네모에, 이번 프레임에 움직인 만큼(속도) 열을 찍음
+       - 멈춰 있을 때(차례 기다리는 중·다 도착한 뒤)는 열 없음 → 열이 아이템을 따라가며 뒤에서 식음
+       - 위치가 안 변하고 잘려 나오기만 하는 것(설명 접힘·개요·태그 판 등, area)은 그 자리 전체에 약하게 */
+    const cell = innerWidth / 12, marks = [[], []];
     movers.forEach((m, el) => {
       if (now > m.until || !el.isConnected) { movers.delete(el); return; }
-      if (m.big) { big.push(el); return; }
       const r = el.getBoundingClientRect();
-      stamp(r.left, r.top, r.width, r.height);
+      if (m.area) { marks[m.big ? 1 : 0].push([r, CONFIG.heatArea]); return; }
+      const cur = { left: r.left, top: r.top + scrollY, right: r.right, bottom: r.bottom + scrollY }, p = m.last;   // 페이지 기준 (스크롤은 움직임으로 안 침)
+      m.last = cur;
+      if (!p) return;
+      const d = Math.abs(cur.left - p.left) + Math.abs(cur.top - p.top) + Math.abs(cur.right - p.right) + Math.abs(cur.bottom - p.bottom);
+      if (d < 0.5) return;
+      const u = { left: Math.min(p.left, cur.left), top: Math.min(p.top, cur.top) - scrollY };
+      u.width = Math.max(p.right, cur.right) - u.left; u.height = Math.max(p.bottom, cur.bottom) - scrollY - u.top;
+      marks[m.big ? 1 : 0].push([u, Math.min(1, d / (cell * CONFIG.heatSpeed))]);
     });
-    flushMass(0.025);
-    /* 커지고 작아지는 사진: 더 뜨겁고 더 넓게 번짐 → 둘레 빈 곳·움직이며 잠깐 생기는 틈으로 열이 보임 */
-    if (big.length) {
-      big.forEach(el => { const r = el.getBoundingClientRect(); stamp(r.left, r.top, r.width, r.height); });
-      flushMass(0.06, 1.1);
-    }
+    marks.forEach((list, b) => {
+      if (!list.length) return;
+      list.forEach(([r, v]) => stampPad(r, CONFIG.heatPad[b], v));
+      flushMass(CONFIG.heatMove[b]);
+    });
     /* 식고 퍼짐 */
     let max = 0;
     for (let j = 0; j < fh; j++) for (let i = 0; i < fw; i++) {
       const k = j * fw + i;
       const l = i > 0 ? T[k - 1] : T[k], r = i < fw - 1 ? T[k + 1] : T[k];
       const u = j > 0 ? T[k - fw] : T[k], d = j < fh - 1 ? T[k + fw] : T[k];
-      B[k] = (T[k] * 0.6 + (l + r + u + d) * 0.1) * 0.986;
+      B[k] = (T[k] * (1 - 4 * CONFIG.heatSpread) + (l + r + u + d) * CONFIG.heatSpread) * CONFIG.heatCool;
       if (B[k] > max) max = B[k];
     }
     [T, B] = [B, T];
@@ -915,7 +947,7 @@ const heat = (() => {
   addEventListener('scroll', () => { if (!running) { running = true; requestAnimationFrame(frame); } }, { passive: true });   // 스크롤도 열을 만듦
   resize();
   addEventListener('resize', resize);
-  return { track(el, ms, big = false) { movers.set(el, { until: performance.now() + ms, big }); wake(); } };   // big: 커지고 작아지는 사진
+  return { track(el, ms, big = false, area = false) { const o = movers.get(el); movers.set(el, { until: performance.now() + ms, big, area, last: o && o.last }); wake(); } };   // big: 커지고 작아지는 사진
 })();
 
 /* ═════════ 시작 ═════════ */
@@ -927,29 +959,32 @@ const heat = (() => {
   /* 아티클·목차에서 '해봐야 아는 것들'을 누르면 돌아올 홈 */
   try { sessionStorage.setItem('haebwaya-home', location.pathname.split('/').pop() || 'index.html'); } catch (e) {}
 
-  /* 1) 그리드(박스·빈 칸·사진 칸)는 바로 그림 — 칸 수(1,026)는 정해져 있어서 시트를 기다릴 필요 없음.
-        사진 칸은 우선 단색(미리 정해 둔 색)으로 자리만 잡아 둠 */
-  IMAGES = Array.from({ length: CONFIG.itemCount }, (_, i) => ({ src: null, solid: SOLID[i % 64 + 1] || '#2a2622', code: null }));
-  build();
-  items.forEach((el, i) => { el._i = i; });
-  if (CONFIG.heat) Object.values(boxEls).forEach((b, i) => heat.track(b.el, 900 + i * 90));   // 박스가 펼쳐질 때도 열
-
-  /* 2) 그다음 시트에서 사진 목록(id)을 받아 칸마다 사진을 정하고 불러옴 (사진 파일 이름 = id).
-        시트를 못 불러오면 예전 A0001~A0064. 사진이 오면 그 사진의 평균색으로 단색을 바꾸고 단계대로 나타남 */
-  await loadSheet();
-  let ids = Object.keys(ITEM_DATA).sort();
-  if (!ids.length) ids = Array.from({ length: CONFIG.imageCount }, (_, i) => `A${String(i + 1).padStart(4, '0')}`);
+  /* 사진 목록은 images/colors.js(사진별 평균색, 페이지와 함께 바로 옴)에서 바로 정함 → 시트를 기다리지 않음.
+     ① 그리드를 그리면서 사진 칸을 바로 그 사진의 평균색(단색)으로 → ② 사진이 오는 대로 반 → 사진
+     시트는 뒤에서 불러와 설명(이름·동사·분야)에만 씀.
+     colors.js가 없을 때만 예전처럼 시트의 id를 기다림 (그동안 사진 칸은 검정) */
   const COL = window.IMAGE_COLORS || {};
+  let ids = Object.keys(COL).sort();
+  const sheetReady = loadSheet();
+  if (!ids.length) {
+    IMAGES = Array.from({ length: CONFIG.itemCount }, () => ({ src: null, solid: '#000', code: null }));
+    build();
+    await sheetReady;
+    ids = Object.keys(ITEM_DATA).sort();
+    if (!ids.length) ids = Array.from({ length: CONFIG.imageCount }, (_, i) => `A${String(i + 1).padStart(4, '0')}`);
+  }
   const pool = ids.map((code, i) => ({ src: CONFIG.path(code), solid: COL[code] || SOLID[i % 64 + 1] || '#2a2622', code, pre: !!COL[code] }));
   /* 아이템 1026개: 사진 묶음을 매번 새로 섞어 이어 붙임 (묶음 경계에서 같은 사진이 붙지 않게) */
-  IMAGES = [];
-  while (IMAGES.length < CONFIG.itemCount) {
+  const list = [];
+  while (list.length < CONFIG.itemCount) {
     const set = shuffle(pool.slice());
-    if (IMAGES.length && set[0] === IMAGES[IMAGES.length - 1]) set.push(set.shift());
-    IMAGES.push(...set);
+    if (list.length && set[0] === list[list.length - 1]) set.push(set.shift());
+    list.push(...set);
   }
-  IMAGES.length = CONFIG.itemCount;
-  items.forEach((el, i) => { el._data = IMAGES[i]; el.style.setProperty('--solid', IMAGES[i].solid); });   // 칸이 그 사진의 평균색으로 바뀜
+  list.length = CONFIG.itemCount;
+  if (!items.length) { IMAGES = list; build(); }                // colors.js가 있으면 여기서 처음 그림 (바로 평균색)
+  else { IMAGES = list; items.forEach((el, i) => { el._data = IMAGES[i]; el.style.setProperty('--solid', IMAGES[i].solid); }); }
+  items.forEach((el, i) => { el._i = i; });
   loadAll(pool);
 })();
 /* ═════════ 맨 위로 ↑ (모든 페이지 공통) ═════════ */
