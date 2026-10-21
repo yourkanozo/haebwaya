@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>해봐야 아는 것들</title>
+<title>폼을 보아하니</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@v2.0/nanumsquare.css">
 <style>
   /* ───────── 공통 규칙 (web-rules.md 참고) ───────── */
@@ -47,13 +47,15 @@
   .item { cursor: pointer; transform-origin: 0 0; }
   .item::before, .item::after { content: ''; position: absolute; inset: 0; }
   .item::before { background: #111 var(--img) center / cover; }
-  /* 로딩: 단색 → 반은 사진·반은 단색 → 사진. 단계마다 '탁' 바뀜 (움직이는 애니메이션 없음)
-     사진이 금방 로딩되면 단계 없이 바로 사진 */
-  .item::after { background: var(--solid); }
-  .item.half-x::after { clip-path: inset(0 0 0 50%); }   /* 왼쪽 반 사진, 오른쪽 반 단색 */
-  .item.half-y::after { clip-path: inset(50% 0 0 0); }   /* 위쪽 반 사진, 아래쪽 반 단색 */
-  .item.done::after { display: none; }
-  .item.open { z-index: 4; cursor: zoom-out; }   /* 박스를 가려도 됨 */
+  /* 로딩 (2026-10-17): 단색 → 사진이 '스르륵'. 단색이 한쪽 가장자리로 걷히며 사진이 드러남 (밀려 나오는 설명 창처럼)
+     스크롤하는 동안은 단색 그대로, 멈추면 화면에 보이는 것부터 (레이지 로드) */
+  .item::after { background: var(--solid); clip-path: inset(0); transition: clip-path var(--reveal, .6s) var(--ease); }
+  .item.done.d-r::after { clip-path: inset(0 0 0 100%); }
+  .item.done.d-l::after { clip-path: inset(0 100% 0 0); }
+  .item.done.d-d::after { clip-path: inset(100% 0 0 0); }
+  .item.done.d-u::after { clip-path: inset(0 0 100% 0); }
+  .item.now::after { transition: none; }
+  .item.open { z-index: 4; cursor: pointer; }   /* 박스를 가려도 됨 */
 
   /* 상세 설명: 열린 아이템 옆 2×2, 그 사진의 평균색 */
   .info {
@@ -91,7 +93,7 @@
   .box .t, .box .s, .box .n { position: absolute; line-height: 1; white-space: nowrap; }
   .box .t { left: var(--gut); top: var(--gut); font-size: var(--fs-l); }
   .box .s { right: var(--gut); bottom: var(--gut); font-size: var(--fs-s); display: flex; align-items: center; gap: calc(var(--u) * 10); }
-  .box .n { right: var(--gut); bottom: var(--gut); font-size: var(--fs-xl); }
+  .box .n { right: var(--gut); bottom: var(--gut); font-size: var(--fs-l); }   /* 10/18: 숫자 40 → 25 (박스 이름과 같은 단계) */
   .box svg { width: calc(var(--u) * 16); height: calc(var(--u) * 16); }
   @keyframes fade { from { opacity: 0; } }
 
@@ -104,10 +106,10 @@
     padding: var(--gut);
     font-size: var(--fs-s); line-height: var(--lh-s);
     clip-path: var(--closed);
-    transition: clip-path .6s var(--ease);
+    transition: clip-path .5s var(--ease) 0s;            /* 10/18 순서 (사진 열기와 같은 규칙) — 열 때: 이름 박스가 아래로 + 사진들이 밀려남 → 다 끝나면 개요가 옆으로 / 닫을 때: 개요가 먼저 접힘 → 이름 박스 올라감 + 사진들 돌아옴 */
     pointer-events: none;
   }
-  .overview.on { clip-path: inset(0); pointer-events: auto; }
+  .overview.on { clip-path: inset(0); pointer-events: auto; transition: clip-path .6s var(--ease) var(--ov-delay, .5s); }
   /* 글은 안쪽 칸(.ov-text)에서만 스크롤 → 스크롤해도 상하좌우 여백(30)이 항상 같게 유지됨
      아래에 글이 더 남아 있으면 글의 아래쪽이 살짝 흐려짐 */
   .overview { word-break: keep-all; overflow: hidden; }
@@ -115,8 +117,12 @@
   .ov-text::-webkit-scrollbar { display: none; }
   .overview.more .ov-text { -webkit-mask-image: linear-gradient(#000 calc(100% - var(--u) * 44), transparent); mask-image: linear-gradient(#000 calc(100% - var(--u) * 44), transparent); }
   .overview p + p { margin-top: var(--lh-s); }
+  /* 개요가 열리면 이름 박스가 글 그대로 아래로 늘어나 개요와 높이가 맞음 (2026-10-17) */
+  .box-name { z-index: 7; align-self: start; justify-self: start; width: calc(var(--cell) * var(--w0, 2)); height: calc(var(--cell) * var(--h0, 2)); transition: width .5s var(--ease) .5s, height .5s var(--ease) .5s; }
+  /* 10/18: 개요를 열면 이름 박스가 3×2 → 2×3 (좁아지며 아래로 길어짐), 그 옆에 개요 2×3 */
+  .box-name.ov-on { width: calc(var(--cell) * (var(--w0, 2) + var(--grow-w, 0))); height: calc(var(--cell) * (var(--h0, 2) + var(--grow, 0))); transition-delay: var(--name-delay, 0s); }
 
-  /* ───────── 스크롤하면 나오는 접이식 메뉴 '해봐야 아는 것들' (위쪽 정가운데, 화면에서 살짝 띄움) ─────────
+  /* ───────── 스크롤하면 나오는 접이식 메뉴 '폼을 보아하니' (위쪽 정가운데, 화면에서 살짝 띄움) ─────────
      그림자는 묶음(.dock) 전체에 아주 옅게 → 아이템 위에서 분리돼 보임 */
   .dock {
     position: fixed; z-index: 20;
@@ -170,6 +176,21 @@
             clip-path: inset(100% 0 0 0); transition: clip-path .5s var(--ease); pointer-events: none; }
   .to-top.show { clip-path: inset(0); pointer-events: auto; }
   .to-top svg { width: calc(var(--u) * 22); height: calc(var(--u) * 22); }
+
+  /* ───────── 메뉴 = 화면 오른쪽 끝의 세로 인덱스 탭 (2026-10-15) ─────────
+     햄버거 칸도 메뉴 칸과 같은 크기(1.5칸 × 반 칸)로 화면 오른쪽 끝에 붙어, 옆에서 밀려 나옴.
+     누르면 홈·아티클·탐색 칸이 그 아래로 하나씩 옆에서 밀려 나와 이어짐 */
+  .dock { right: 0 !important; }
+  .fab { width: calc(var(--cell) * 1.5) !important; justify-content: flex-start !important; padding: 0 var(--gut) !important;
+         clip-path: none !important; transform: translateX(100%); transition: transform .5s var(--ease) !important; }
+  .fab.show { transform: none; }
+  /* 2026-10-17: 메뉴 칸은 햄버거 칸 밑에서 아래로 펼쳐짐 — 사진이 밀려 내려가는 움직임과 같음 (같은 곡선·0.7초·칸마다 0.04초 차례) */
+  .fab { position: relative; z-index: 2; }
+  .menu { align-items: flex-end !important; position: relative; z-index: 1; overflow: hidden; }
+  .menu a, .menu button { width: calc(var(--cell) * 1.5) !important; height: calc(var(--cell) / 2) !important;
+    clip-path: none !important; position: relative; z-index: calc(10 - var(--i)); transform: translateY(calc(-100% * (var(--i) + 1)));   /* 위 칸이 아래 칸을 덮은 채로 차례로 펼쳐짐 */
+    transition: transform .7s cubic-bezier(.25, .1, .25, 1) calc(var(--i) * 40ms) !important; }
+  .menu.on a, .menu.on button { transform: none; }
 </style>
 <script src="images/colors.js"></script>   <!-- 사진별 평균색 (없으면 임시 색) -->
 </head>
@@ -196,8 +217,8 @@ const CONFIG = {
   blockSizes: [              // 빈 칸 덩어리 크기(가로×세로)와 나오는 비중
     { w: 2, h: 1, p: 5 }, { w: 2, h: 2, p: 3 }, { w: 2, h: 3, p: 1.5 }, { w: 3, h: 2, p: 1.5 }, { w: 3, h: 3, p: 1 },
   ],
-  loadStep: 40,              // 로딩 단계가 아이템마다 차례로 바뀌는 간격(ms)
-  halfHold: 140,             // '반' 단계로 머무는 시간(ms)
+  loadStep: 45,              // 사진이 아이템마다 차례로 드러나는 간격(ms)
+  lazyIdle: 100,             // (10/17: 180 → 100) 스크롤이 이만큼(ms) 멈추면 '멈췄다'고 보고 사진을 불러옴 (2026-10-17)
   heat: true,                // 히트맵 켜기/끄기
   heatMax: 0.6,              // 가장 뜨거운 색의 위치 (0.6 = 빨강. 0.75면 주황, 0.9면 노랑, 1이면 흰색까지)
   heatBlob: 0.25,            // 움직이는 사진 열의 가장자리 흐림 (칸 대비). 작을수록 각짐 (10/14: 0.6 둥긂 → 0.1 너무 각짐 → 0.25)
@@ -209,7 +230,9 @@ const CONFIG = {
   heatScrollBlob: 0.12,      // 스크롤 잔상의 번짐 크기 (칸 대비). 작을수록 빈 칸 가장자리에만 남음
   heatFollow: 0.7,           // 스크롤할 때 열이 페이지를 따라가는 정도 (1 = 페이지에 붙음, 0 = 화면에 고정 → 잔상이 길게 남음)
   heatSpread: 0.07,           // 식으면서 옆으로 퍼지는 정도. 클수록 둥글게 뭉개짐 (10/14: 0.1 → 0.04 → 0.07)
-  heatCool: 0.965,           // 한 프레임마다 남는 열 (1에 가까울수록 늦게 식음). 10/14: 0.986 → 0.975 (더 빨리 식게) → 0.965 (꼬리 짧게)
+  heatCoolFast: 0.93,        // 사진 설명이 닫히고 사진이 돌아오는 동안만 쓰는 빠른 식음 (10/17)
+  heatEmber: 0.15,           // 이보다 옅은 열은 잔열 — 식는 속도를 0.4배로 늦춤 (10/17)
+  heatCool: 0.985,           // 한 프레임마다 남는 열 (1에 가까울수록 늦게 식음). 10/14: 0.986 → 0.975 (더 빨리 식게) → 0.965 (꼬리 짧게) → 0.985 (10/17: 잔열이 오래 남게)
   boxesMove: false,          // true: 박스도 아이템과 같은 규칙으로 아래로 밀려남
   /* 움직임 속도 (2026-10-14: 순서가 또렷하게 지켜지도록 한 단계씩 끝나고 다음이 시작 — 대신 각각은 조금 빠르게) */
   pushStep: 40,              // 위아래 줄 사이 출발 간격(ms) — 위에서부터 살짝 차례로
@@ -224,18 +247,19 @@ const ARROW_OUT = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" st
 const MENU_ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M8 14V2M2 8l6-6 6 6"/></svg>';
 
 /* 박스 (w × h 칸). 자리는 로딩할 때마다 랜덤, 첫 화면 안 */
+const OV_OPEN = { name: { w: 2, h: 3 }, ov: { w: 2, h: 3 } };   // 10/18: 개요를 열었을 때 이름 박스·개요 크기 (가로×세로 칸). 닫혀 있을 땐 이름 3×2
 const BOXES = [
-  { id: 'name',    w: 2, h: 2, tag: 'button', html: `<span class="t">해봐야 아는 것들</span><span class="s">interface archiving</span>` },
+  { id: 'name',    w: 3, h: 2, tag: 'button', html: `<span class="t">폼을 보아하니</span><span class="s">interface archiving</span>` },
   { id: 'article', w: 2, h: 1, tag: 'a', href: CONFIG.pages.article, html: `<span class="t">아티클</span><span class="s">2026년 10월 &lt;트리거의 계보&gt; ${ARROW_OUT}</span>` },
   { id: 'explore', w: 2, h: 1, tag: 'a', href: CONFIG.pages.explore, html: `<span class="t">탐색</span><span class="s">누르고, 돌리고, 잡은 것들 ${ARROW_OUT}</span>` },
   { id: 'all',     w: 1, h: 1, tag: 'div',  /* 누르면 반응 없음 */ html: `<span class="t">전체</span><span class="n">1,026</span>` },
 ];
 
-const SENTENCES = [   // 문단 하나 = 항목 하나
-  '버튼을 누를 때 드는 힘, 다이얼이 한 칸씩 걸리는 간격, 손잡이를 당기는 방향은 눈으로 봐서는 알 수 없다. 전부 해봐야 아는 것들이다.',
-  '이 프로젝트에서는 그것을 인터페이스라고 부른다. 인터페이스는 서로 다른 두 대상이 상호작용하도록 연결하는 접점을 말한다. 사람과 사물 사이에 놓인 버튼, 레버, 손잡이, 스위치, 화면이 모두 여기에 속한다.',
-  '같은 기능을 하는 인터페이스도 시대에 따라 형태와 조작 방식이 바뀐다. 문손잡이는 센서 인식 자동문으로, 열쇠는 얼굴 인식으로 바뀌고 있다. 형태가 사라지면 그것을 조작하던 방식에 대한 기록도 함께 사라진다.',
-  '‘해봐야 아는 것들’은 이 변화를 기록하는 오픈 아카이브다. 수집한 인터페이스는 ‘탐색’에서 동사와 분야로 골라 볼 수 있다. ‘아티클’은 하나의 동작을 기준으로 서로 다른 분야의 인터페이스를 묶어 읽는 글이다.',
+const SENTENCES = [   // 문단 하나 = 항목 하나 (10/18: 현진 글을 다듬어 2×3에 스크롤 없이 들어가게)
+  '버튼은 누르게, 손잡이는 당기게, 다이얼은 돌리게 생겼다. 우리는 처음 보는 물건도 폼을 보고 다루는 법을 짐작한다. 이처럼 서로 다른 두 대상을 이어 주는 접점을, 이 프로젝트에서는 인터페이스라고 부른다.',
+  '그러나 익숙한 폼도 언젠가 사라진다. 문손잡이가 자동문으로, 열쇠가 얼굴 인식으로 바뀌면 그것을 다루던 방식도 함께 잊힌다.',
+  '‘폼을 보아하니’는 지금 손에 닿는 인터페이스의 폼과 그것이 이끄는 동작을 모아 두는 오픈 아카이브다. ‘탐색’에서는 동사와 분야로 골라 보고, ‘아티클’에서는 한 동작으로 여러 분야를 엮어 읽는다.',
+  '폼을 보아하니, 모아볼 만하다.',
 ];
 
 /* 아이템 데이터: 지금은 임시 (구글 시트 데이터로 교체 예정) */
@@ -326,26 +350,41 @@ function gapBetween(a, b) {                      // 두 박스 사이 빈 칸 �
   const gy = Math.max(0, b.r - (a.r + a.h), a.r - (b.r + b.h));
   return Math.max(gx, gy);
 }
-function randomBoxes(rows) {
+/* 2026-10-17: 위에서 아래로 순서 고정 — 프로젝트 이름(맨 윗줄) → 탐색 → 아티클 → 전체. 가로 자리·색은 랜덤 */
+const BOX_ORDER = ['name', 'explore', 'article', 'all'];
+function randomBoxes(rows, namePos) {
+  const byId = Object.fromEntries(BOXES.map(b => [b.id, b]));
   for (let attempt = 0; attempt < 200; attempt++) {
-    const out = [];
-    const ok = BOXES.every(b => {
-      for (let t = 0; t < 200; t++) {
-        const r = { c: 1 + rand(13 - b.w), r: 1 + rand(rows - b.h + 1), w: b.w, h: b.h };
+    const out = {}, placed = [];
+    let prevR = 0, ok = true;
+    for (let k = 0; k < BOX_ORDER.length && ok; k++) {
+      const b = byId[BOX_ORDER[k]], left = BOX_ORDER.length - 1 - k;   // 아래에 더 놓을 박스 수
+      const rMin = k === 0 ? 1 : prevR + 1, rMax = k === 0 ? 2 : rows - b.h + 1 - left;   // 이름 박스: 1행 또는 2행에서 시작 (10/18)
+      if (rMax < rMin) { ok = false; break; }
+      let done = false;
+      for (let t = 0; t < 200 && !done; t++) {
+        /* 이름 박스 (10/18): 중앙까지 와도 됨. 닫힌 3×2도, 열린 이름 2×3 + 개요 2×3도 7열을 넘지 않게 → 1~4열에서 시작 */
+        const c = b.id === 'name' ? 1 + rand(7 - Math.max(b.w, OV_OPEN.name.w + OV_OPEN.ov.w) + 1) : 1 + rand(13 - b.w);
+        const r = b.id === 'name' && namePos ? { ...namePos, w: b.w, h: b.h } : { c, r: rMin + rand(rMax - rMin + 1), w: b.w, h: b.h };
         const grown = { c: r.c - 1, r: r.r - 1, w: r.w + 2, h: r.h + 2 };   // 둘레 한 칸(빈 칸 띠)까지 포함해 다른 박스와 겹치지 않게
-        if (out.some(o => overlap(grown, o))) continue;
-        out.push(r); return true;
+        if (placed.some(o => overlap(grown, o))) continue;
+        out[b.id] = r; placed.push(b.id === 'name' ? { c: r.c, r: r.r, w: Math.max(r.w, OV_OPEN.name.w + OV_OPEN.ov.w), h: Math.max(r.h, OV_OPEN.name.h, OV_OPEN.ov.h) } : r);   // 이름: 열렸을 때 자리(이름 2×3 + 개요 2×3)까지 비워 둠
+        prevR = r.r; done = true;
       }
-      return false;
-    });
-    if (ok) return out;
+      ok = done;
+    }
+    if (ok) return BOXES.map(b => out[b.id]);
   }
   return null;
 }
 function placeBoxes(rows) {
+  /* 10/18: 이름 박스 자리는 먼저 고르게 랜덤으로 정함 (1~4열, 1~2행) → 나머지 박스만 멀리 떨어지게 고름
+     (같이 고르면 '멀리 떨어진' 배치가 늘 이기면서 이름 박스가 왼쪽 위 모서리에 몰림) */
+  const nb = BOXES.find(b => b.id === 'name');
+  const namePos = { c: 1 + rand(7 - Math.max(nb.w, OV_OPEN.name.w + OV_OPEN.ov.w) + 1), r: 1 + rand(2) };
   let best = null, bestMin = -1, bestSum = -1;
   for (let i = 0; i < CONFIG.spreadTries; i++) {
-    const cand = randomBoxes(rows);
+    const cand = randomBoxes(rows, namePos);
     if (!cand) continue;
     let min = Infinity, sum = 0;
     for (let a = 0; a < cand.length; a++) for (let b = a + 1; b < cand.length; b++) {
@@ -353,7 +392,7 @@ function placeBoxes(rows) {
     }
     if (min > bestMin || (min === bestMin && sum > bestSum)) { best = cand; bestMin = min; bestSum = sum; }
   }
-  return best;
+  return best || placeBoxes(rows + 1);                               // 화면이 낮아 순서대로 못 놓으면 한 줄 늘려서
 }
 
 /* 빈 칸: 중간중간. 이어져도 두 칸까지 (세 칸 이상 상하좌우로 붙지 않음), 박스에 붙지 않음 */
@@ -455,58 +494,49 @@ function build() {
   buildMenu();
 }
 
-/* ═════════ 로딩 ═════════
-   아이템은 처음엔 사진의 평균색(미리 계산한 값)으로 칠해져 있고, 실제 사진이 도착하면 바뀜.
-   - 화면에 보이면: 왼쪽 위부터 차례로 단색 → 반 → 사진 (빨리 와도 항상)
-   - 화면 밖이면: 단색으로 기다렸다가, 스크롤해서 보일 때 같은 방식으로 탁탁 */
-const T0 = performance.now();
+/* ═════════ 로딩 (2026-10-17) ═════════
+   - 아이템은 처음엔 그 사진의 평균색(단색). 사진은 '멈춰 있을 때'만 불러와서 보여 줌 (레이지 로드)
+   - 스크롤하는 동안은 단색 그대로 → 멈추면(CONFIG.lazyIdle) 화면에 보이는 것부터 왼쪽 위 순서로
+   - 단색 → 사진: 단색이 한쪽 가장자리로 걷히며 사진이 스르륵 드러남 */
+const inView = el => { const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; };
+const byPos = (a, b) => { const A = a.getBoundingClientRect(), B = b.getBoundingClientRect(); return (A.top - B.top) || (A.left - B.left); };
+let scrolling = false, scrollIdle;
+addEventListener('scroll', () => { scrolling = true; clearTimeout(scrollIdle); scrollIdle = setTimeout(() => { scrolling = false; revealVisible(); }, CONFIG.lazyIdle); }, { passive: true });
+addEventListener('resize', () => setTimeout(revealVisible, CONFIG.lazyIdle));
+const imgCache = new Map();                                     // 같은 사진은 한 번만 받음
+const getImg = src => { if (!imgCache.has(src)) imgCache.set(src, loadImage(src)); return imgCache.get(src); };
+const DIRS = ['d-r'];   // 10/18: 사진은 늘 왼쪽 → 오른쪽으로 드러남 (단색이 오른쪽으로 걷힘)
+/* 2026-10-17: 화면 밖으로 나간 사진은 다시 단색으로 → 돌아오면 레이지 로드로 다시 스르륵 */
+const outIO = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting) return;
+  const el = e.target; outIO.unobserve(el);
+  if (!el._shown) return;
+  el.classList.add('now'); el.classList.remove('done'); el._shown = false; el._q = false;
+  requestAnimationFrame(() => el.classList.remove('now'));
+}));
+function showImg(el) {
+  el._shown = true;
+  el.style.setProperty('--img', `url(${el._data.src})`);
+  el.classList.add(DIRS[rand(DIRS.length)]);
+  void el.offsetWidth;
+  el.classList.add('done');
+  outIO.observe(el);
+}
 const revealQueue = [];
 let revealing = false;
-const inView = el => { const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; };
-function showNow(el) { el.style.setProperty('--img', `url(${el._data.src})`); el.classList.add('done'); }
-/* 2026-10-14: 모든 사진은 '로딩처럼' 나옴 — 화면에 보이면 왼쪽 위부터 탁탁, 화면 밖이면 기다렸다가 스크롤해서 보일 때 탁탁 */
-const byPos = (a, b) => { const A = a.getBoundingClientRect(), B = b.getBoundingClientRect(); return (A.top - B.top) || (A.left - B.left); };
-const seen = new IntersectionObserver(es => es.forEach(e => {
-  if (!e.isIntersecting) return;
-  seen.unobserve(e.target);
-  if (e.target._ready && !e.target.classList.contains('done')) queueReveal(e.target);
-}));
-function queueReveal(el) {
-  if (revealQueue.includes(el)) return;
-  revealQueue.push(el); revealQueue.sort(byPos);
+function revealVisible() {
+  if (scrolling) return;
+  items.filter(el => !el._shown && !el._q && inView(el)).sort(byPos).forEach(el => { el._q = true; revealQueue.push(el); });
   if (!revealing) nextReveal();
 }
-function onImageReady(code) {
-  items.forEach(el => {
-    if (el._data.code !== code || el.classList.contains('done')) return;
-    el._ready = true;
-    if (inView(el)) queueReveal(el); else seen.observe(el);   // 화면 밖: 보일 때까지 단색으로 기다림
-  });
-}
 function nextReveal() {
-  let el = revealQueue.shift();
-  while (el && !inView(el)) { seen.observe(el); el = revealQueue.shift(); }   // 차례 오기 전에 화면 밖으로 나갔으면 다시 기다림
+  if (scrolling) { revealQueue.forEach(el => { el._q = false; }); revealQueue.length = 0; revealing = false; return; }   // 스크롤 시작 → 멈출 때까지 기다림
+  const el = revealQueue.shift();
   if (!el) { revealing = false; return; }
-  revealing = true;
-  el.style.setProperty('--img', `url(${el._data.src})`);
-  el.classList.add(Math.random() < 0.5 ? 'half-x' : 'half-y');            // 탁: 반
-  setTimeout(() => { el.classList.remove('half-x', 'half-y'); el.classList.add('done'); }, CONFIG.halfHold);   // 탁: 사진
-  setTimeout(nextReveal, Math.max(12, Math.min(CONFIG.loadStep, 600 / (revealQueue.length + 1))));   // 한꺼번에 많이 보이면 간격을 좁혀 한 화면이 1초 남짓에 다 나오게
-}
-/* 사진의 평균색 (파일을 직접 열면 브라우저가 막아서 null → 미리 정한 색 유지) */
-function avgColor(img) {
-  try { const c = document.createElement('canvas'); c.width = c.height = 1; const x = c.getContext('2d'); x.drawImage(img, 0, 0, 1, 1); const d = x.getImageData(0, 0, 1, 1).data; return `rgb(${d[0]},${d[1]},${d[2]})`; } catch (e) { return null; }
-}
-/* 사진은 화면에 처음 나오는 순서(왼쪽 위부터)대로 불러옴 */
-function loadAll(pool) {
-  const order = [];
-  IMAGES.forEach(im => { if (!order.includes(im)) order.push(im); });
-  order.forEach(im => loadImage(im.src).then(img => {
-    if (!img) return;
-    const avg = im.pre ? null : avgColor(img);                   // 미리 계산한 평균색이 없을 때만 직접 계산
-    if (avg) { im.solid = avg; items.forEach(el => { if (el._data === im) el.style.setProperty('--solid', avg); }); }
-    onImageReady(im.code);
-  }));
+  revealing = true; el._q = false;
+  if (el._shown || !inView(el)) return nextReveal();
+  getImg(el._data.src).then(img => { if (img && !el._shown && !scrolling && inView(el)) showImg(el); });
+  setTimeout(nextReveal, Math.max(12, Math.min(CONFIG.loadStep, 700 / (revealQueue.length + 1))));
 }
 
 /* ═════════ 아이템 열기: 2×2로 커지고 옆에 상세 설명 2×2, 나머지는 밀려남 ═════════ */
@@ -556,7 +586,10 @@ function regionAt(item) {
    - 박스도 움직임(CONFIG.boxesMove): 걸친 세로줄의 아이템·빈 칸·박스가 모두 똑같이 두 칸 내려감.
      박스가 다른 세로줄에도 걸쳐 있으면 그 줄도 같이 내려감 (박스 옆에 잠깐 빈자리가 생김) */
 function pushDown(spot, focus) {
-  const region = { c: Math.min(spot.img.c, spot.info.c), r: Math.min(spot.img.r, spot.info.r), w: spot.img.c === spot.info.c ? 2 : 4, h: spot.img.r === spot.info.r ? 2 : 4 };
+  pushArea({ c: Math.min(spot.img.c, spot.info.c), r: Math.min(spot.img.r, spot.info.r), w: spot.img.c === spot.info.c ? 2 : 4, h: spot.img.r === spot.info.r ? 2 : 4 }, focus);
+}
+/* 10/18: 사진 열기와 개요 열기가 같은 규칙으로 밀어냄 — region(가로 w × 세로 h)에 걸친 세로줄만 */
+function pushArea(region, focus) {
   if (!CONFIG.boxesMove) {
     const taken = new Set([...blocked, ...cellsOf(region)]);
     for (let c = region.c; c < region.c + region.w; c++) {
@@ -572,7 +605,7 @@ function pushDown(spot, focus) {
     return;
   }
   const start = {};                                            // 세로줄마다 이 행부터 아래가 두 칸 내려감
-  for (let c = region.c; c < region.c + 4; c++) start[c] = region.r;
+  for (let c = region.c; c < region.c + region.w; c++) start[c] = region.r;
   const moving = new Set();
   let changed = true;
   while (changed) {
@@ -602,8 +635,9 @@ function restoreAll() {
 
 function openItem(el) {
   const spot = regionAt(el);
-  const switching = !!openEl;
-  toggleOverview(false);
+  const ovWas = !!ovEl && ovEl.classList.contains('on');
+  const switching = !!openEl || ovWas;                          // 개요가 열려 있었으면: 개요가 먼저 접힌 뒤 움직임
+  toggleOverview(false, true);
   flip(() => {
     closeDom(true);
     restoreAll();
@@ -640,7 +674,7 @@ function closeDom() {
   }
   openEl = infoEl = null;
 }
-function closeItem() { if (openEl) { const f = openEl; flip(() => { closeDom(); restoreAll(); }, { focus: f, opening: false }); } }
+function closeItem() { if (openEl) { heat.fast(2000); const f = openEl; flip(() => { closeDom(); restoreAll(); }, { focus: f, opening: false }); } }
 
 /* 움직임 (흔히 쓰는 그리드 재배치 방식: 바뀌기 전 자리 → 바뀐 자리로 한 번에, 짧고 부드럽게)
    - 움직이는 건 열린 자리에 걸린 세로줄의 아이템뿐, 방향은 위아래로만
@@ -681,7 +715,8 @@ function flip(change, { focus, opening, switching = false }) {
       { duration: dur, delay, easing: ease, fill: 'backwards' }));
     if (CONFIG.heat) heat.track(el, delay + dur + 50, resized);
   });
-  if (!focus || !focus.isConnected) return;
+  setTimeout(revealVisible, Math.max(pushEnd, base + CONFIG.growDur) + 120);   // 움직이는 동안엔 안 불러오고, 멈춘 뒤 새로 보이는 사진만
+  if (!focus || !focus.isConnected) return pushEnd;
   const a = before.get(focus), b = focus.getBoundingClientRect();
   const gDelay = base;                                           // 커짐·작아짐은 다른 사진들의 움직임과 함께 시작
   const gDur = opening ? CONFIG.growDur : C;
@@ -695,6 +730,7 @@ function flip(change, { focus, opening, switching = false }) {
     infoEl.style.setProperty('--info-dur', CONFIG.infoDur / 1000 + 's');
     if (CONFIG.heat) { const ie = infoEl; setTimeout(() => ie.isConnected && heat.track(ie, CONFIG.infoDur + 50, true), Math.max(pushEnd, gDelay + gDur)); }   // 설명이 밀려 나오기 시작할 때부터 열 (그 전엔 숨어 있으므로 열 없음 → 빈 자리에 빨간 네모가 생기지 않게)
   }
+  return Math.max(pushEnd, gDelay + gDur);
 }
 grid.addEventListener('click', e => {
   const it = e.target.closest('.item');
@@ -704,8 +740,9 @@ grid.addEventListener('click', e => {
 addEventListener('keydown', e => { if (e.key === 'Escape') { closeItem(); toggleOverview(false); toggleMenu(false); } });
 
 /* ═════════ 개요: 프로젝트 이름 박스 옆에 펼쳐짐 ═════════ */
-let ovEl = null;
+let ovEl = null, ovRegion = null;
 function buildOverview() {
+  /* 2026-10-17: 이름 박스는 글 그대로 아래로 늘어나 2×3이 되고, 그 옆에 개요 글 덩어리(2×3)가 따로 펼쳐짐 (높이가 맞음) */
   const { el: nameEl, rect } = boxEls.name;
   ovEl = document.createElement('div');
   ovEl.className = 'overview';
@@ -713,36 +750,49 @@ function buildOverview() {
   const ovText = ovEl.firstElementChild;
   paint(ovEl, colors.name);
   grid.appendChild(ovEl);
-  const w = 2, h = 3;                                         // 개요: 가로 2칸 × 세로 3칸
-  ovEl.style.setProperty('--w', w);
-  /* 자리: 이름 박스 옆(가운데 쪽 → 반대쪽 → 아래 → 위) 중 다른 박스를 가리지 않는 첫 자리 */
-  const rows = Math.max(h, Math.floor(innerHeight / cellPx()));
-  const toRight = rect.c + (rect.w - 1) / 2 <= 6.5;
-  const clampR = r => Math.max(1, Math.min(r, rows - h + 1));
-  const cands = [
-    { c: toRight ? rect.c + rect.w : rect.c - w, r: clampR(rect.r), closed: toRight ? 'inset(0 100% 0 0)' : 'inset(0 0 0 100%)' },
-    { c: toRight ? rect.c - w : rect.c + rect.w, r: clampR(rect.r), closed: toRight ? 'inset(0 0 0 100%)' : 'inset(0 100% 0 0)' },
-    { c: rect.c, r: rect.r + rect.h, closed: 'inset(0 0 100% 0)' },
-    { c: rect.c, r: rect.r - h, closed: 'inset(100% 0 0 0)' },
-  ].map(x => ({ ...x, w, h }));
-  const others = Object.entries(boxEls).filter(([k]) => k !== 'name').map(([, v]) => v.rect);
-  const fits = x => x.c >= 1 && x.c + w - 1 <= 12 && x.r >= 1;
-  const spot = cands.find(x => fits(x) && !others.some(o => overlap(x, o))) || cands.find(fits) || cands[0];
-  ovEl.style.setProperty('--c', spot.c);
-  ovEl.style.setProperty('--r', spot.r);
-  ovEl.style.setProperty('--h', h);
-  ovEl.style.setProperty('--closed', spot.closed);
+  const { w, h } = OV_OPEN.ov, nw = OV_OPEN.name.w, nh = OV_OPEN.name.h;   // 열렸을 때: 이름 nw×nh, 개요 w×h
+  const toRight = rect.c + nw + w - 1 <= 12;                    // 되도록 오른쪽 (이름 박스가 왼쪽에 있으므로)
+  ovEl.style.setProperty('--w', w); ovEl.style.setProperty('--h', h);
+  ovEl.style.setProperty('--c', toRight ? rect.c + nw : rect.c - w);
+  ovEl.style.setProperty('--r', rect.r);
+  ovEl.style.setProperty('--closed', toRight ? 'inset(0 100% 0 0)' : 'inset(0 0 0 100%)');   // 이름 박스 쪽에서 펼쳐짐
+  nameEl.style.setProperty('--grow', nh - rect.h); nameEl.style.setProperty('--grow-w', nw - rect.w); nameEl.style.setProperty('--w0', rect.w); nameEl.style.setProperty('--h0', rect.h);
+  ovRegion = { c: toRight ? rect.c : rect.c - w, r: rect.r, w: nw + w, h: Math.max(nh, h) };   // 늘어난 이름 박스 + 개요 = 밀어낼 자리
   nameEl.addEventListener('click', e => { e.stopPropagation(); toggleOverview(); });
   ovEl.addEventListener('click', e => { e.stopPropagation(); toggleOverview(false); });
   const markMore = () => ovEl.classList.toggle('more', ovText.scrollTop + ovText.clientHeight < ovText.scrollHeight - 2);
   ovText.addEventListener('scroll', markMore, { passive: true });
   ovEl._markMore = markMore;
 }
-function toggleOverview(on) {
+/* 10/18: 사진 열기와 같은 규칙
+   열 때:   [이름 박스 늘어남 + 걸친 세로줄 사진들 밀려남] 함께 → 다 끝나면 개요가 옆으로 펼쳐짐
+   닫을 때: 개요 접힘 → [이름 박스 줄어듦 + 사진들 원래대로] 함께
+   사진 설명이 열려 있었으면: 설명 접힘 → 위의 '열 때'
+   quiet: 사진을 열 때 개요만 접고, 자리 이동은 사진 열기 쪽에서 한꺼번에 */
+function toggleOverview(on, quiet) {
   if (!ovEl) return;
-  on = on ?? !ovEl.classList.contains('on');
-  if (on !== ovEl.classList.contains('on') && CONFIG.heat) heat.track(ovEl, 700, true, true);   // 개요가 펼쳐지고 접힐 때도 열
+  const was = ovEl.classList.contains('on');
+  on = on ?? !was;
+  if (on === was) return;
+  const nameEl = boxEls.name.el, C = CONFIG.closeDur;
+  let end = 0, start = 0;
+  if (!quiet) {
+    if (on) {
+      const prev = openEl;                                        // 사진 설명이 열려 있으면 먼저 접음
+      if (prev) heat.fast(2000);
+      end = flip(() => { if (prev) closeDom(); restoreAll(); pushArea(ovRegion, null); }, prev ? { focus: prev, opening: false } : { focus: null, opening: true });
+      start = prev ? C : 0;
+      end = Math.max(end, start + 500);                           // 이름 박스가 늘어나는 0.5초보다 일찍 펼쳐지지 않게
+    } else {
+      flip(() => restoreAll(), { focus: null, opening: false });  // 개요가 접힌 뒤(C) 사진들이 돌아옴
+    }
+  }
+  nameEl.style.setProperty('--name-delay', start / 1000 + 's');
+  ovEl.style.setProperty('--ov-delay', (end || 500) / 1000 + 's');
+  if (CONFIG.heat) { const t = on ? (end || 500) + 650 : 1100; heat.track(ovEl, t, true, true); heat.track(nameEl, t, true); }   // 개요가 펼쳐지고 접힐 때 + 이름 박스가 늘어나고 줄어들 때도 열
+  if (!on && CONFIG.heat) heat.fast(2000);                         // 개요가 접힐 때도 사진 설명처럼 빨리 식음
   ovEl.classList.toggle('on', on);
+  nameEl.classList.toggle('ov-on', on);
   if (on) { ovEl.firstElementChild.scrollTop = 0; ovEl._markMore(); }
 }
 document.addEventListener('click', e => { if (!e.target.closest('.box-name, .overview, .menu, .fab')) toggleOverview(false); });
@@ -765,6 +815,7 @@ function buildMenu() {
     el.addEventListener('click', () => { toggleMenu(false); m.act && m.act(); });
     menu.appendChild(el);
   });
+  { const used = [...menu.children].map(e => e.style.getPropertyValue('--bg').toLowerCase()); const free = PALETTE.filter(c => !used.includes(c.toLowerCase())); paint(fab, free[Math.floor(Math.random() * free.length)]); }   // 햄버거 칸은 메뉴 칸들과 다른 색 → 탭끼리 구분됨 (2026-10-15)
 }
 function toggleMenu(on) { const v = menu.classList.toggle('on', on ?? !menu.classList.contains('on')); fab.classList.toggle('open', v); }   // 메뉴는 사진 위에 떠 있어서 히트맵 없음
 fab.addEventListener('click', e => { e.stopPropagation(); toggleMenu(); });
@@ -778,6 +829,7 @@ addEventListener('scroll', () => {
 /* ═════════ 히트맵: 빈 칸으로만 보이는 열화상 ═════════
    마우스가 지나가거나, 밀려나는 아이템이 지나간 자리에 열이 남고 서서히 식음 */
 const heat = (() => {
+  let fastUntil = 0;
   const S = 0.25;                       // 해상도 (화면의 1/4)
   const canvas = document.getElementById('heat');
   if (!CONFIG.heat) { canvas.remove(); return { track() {} }; }     // 히트맵 끈 버전: 빈 칸은 그냥 검정
@@ -846,16 +898,11 @@ const heat = (() => {
     for (let n = 0; n < M.length; n++) if (M[n] > 0.01) T[n] = Math.min(1, T[n] + M[n] * k);
     M.fill(0); massDirty = false;
   }
-  function color(v) {                    // 예전 색 (2026-10-15 되돌림): 남색 → 파랑 → 보라 → 빨강 (heatMax 0.6에서 멈춤 → 주황·노랑·흰색은 안 씀)
-    let r, g, b, t;
-    if (v < 0.15)      { t = v / 0.15;          r = 5 + t * 5;     g = 5 + t * 15;   b = 20 + t * 70; }
-    else if (v < 0.30) { t = (v - 0.15) / 0.15; r = 10 + t * 20;   g = 20 + t * 20;  b = 90 + t * 130; }
-    else if (v < 0.45) { t = (v - 0.30) / 0.15; r = 30 + t * 90;   g = 40 - t * 20;  b = 220 - t * 80; }
-    else if (v < 0.60) { t = (v - 0.45) / 0.15; r = 120 + t * 135; g = 20 + t * 20;  b = 140 - t * 130; }
-    else if (v < 0.75) { t = (v - 0.60) / 0.15; r = 255;           g = 40 + t * 130; b = 10; }
-    else if (v < 0.90) { t = (v - 0.75) / 0.15; r = 255;           g = 170 + t * 75; b = t * 10; }
-    else               { t = (v - 0.90) / 0.10; r = 255;           g = 245 + t * 10; b = 10 + t * 245; }
-    return [r, g, b];
+  function color(v) {                    // 검정 → 파랑 → 초록 → 노랑 → 빨강 (heatMax에서 멈춤) — 2026-10-17 다시 이 색으로
+    const S = [[0.0, 0, 0, 0], [0.06, 0, 0, 0], [0.285, 30, 40, 220], [0.48, 0, 235, 60], [0.54, 255, 230, 0], [0.585, 235, 0, 10], [0.6, 235, 0, 10], [1, 235, 0, 10]];   // 검정 2 : 파랑 5.5 : 초록 1 : 노랑 1 : 빨강 0.5 (2026-10-14)
+    let i = 1; while (i < S.length - 1 && v > S[i][0]) i++;
+    const [a, b] = [S[i - 1], S[i]], t = Math.min(1, Math.max(0, (v - a[0]) / (b[0] - a[0])));
+    return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t];
   }
   function frame() {
     /* 스크롤: 열은 페이지를 일부만 따라감(CONFIG.heatFollow) → 화면 위를 지나가는 아이템이 빈 칸에 잔상을 남김 */
@@ -906,13 +953,14 @@ const heat = (() => {
       list.forEach(([r, v]) => stampPad(r, CONFIG.heatPad[b], v));
       flushMass(CONFIG.heatMove[b]);
     });
+    const fastNow = performance.now() < fastUntil;      // 설명이 닫히는 동안만 빨리 식음 (10/17)
     /* 식고 퍼짐 */
     let max = 0;
     for (let j = 0; j < fh; j++) for (let i = 0; i < fw; i++) {
       const k = j * fw + i;
       const l = i > 0 ? T[k - 1] : T[k], r = i < fw - 1 ? T[k + 1] : T[k];
       const u = j > 0 ? T[k - fw] : T[k], d = j < fh - 1 ? T[k + fw] : T[k];
-      B[k] = (T[k] * (1 - 4 * CONFIG.heatSpread) + (l + r + u + d) * CONFIG.heatSpread) * CONFIG.heatCool;
+      B[k] = (T[k] * (1 - 4 * CONFIG.heatSpread) + (l + r + u + d) * CONFIG.heatSpread) * (fastNow ? CONFIG.heatCoolFast : T[k] < CONFIG.heatEmber ? 1 - (1 - CONFIG.heatCool) * .4 : CONFIG.heatCool);   // 옅게 남은 열(잔열)은 더 천천히 식음
       if (B[k] > max) max = B[k];
     }
     [T, B] = [B, T];
@@ -947,7 +995,7 @@ const heat = (() => {
   addEventListener('scroll', () => { if (!running) { running = true; requestAnimationFrame(frame); } }, { passive: true });   // 스크롤도 열을 만듦
   resize();
   addEventListener('resize', resize);
-  return { track(el, ms, big = false, area = false) { const o = movers.get(el); movers.set(el, { until: performance.now() + ms, big, area, last: o && o.last }); wake(); } };   // big: 커지고 작아지는 사진
+  return { fast(ms) { fastUntil = performance.now() + ms; }, track(el, ms, big = false, area = false) { const o = movers.get(el); movers.set(el, { until: performance.now() + ms, big, area, last: o && o.last }); wake(); } };   // big: 커지고 작아지는 사진
 })();
 
 /* ═════════ 시작 ═════════ */
@@ -956,7 +1004,7 @@ const heat = (() => {
   const pal = shuffle(PALETTE.slice());
   BOXES.forEach((b, i) => { colors[b.id] = pal[i]; });
 
-  /* 아티클·목차에서 '해봐야 아는 것들'을 누르면 돌아올 홈 */
+  /* 아티클·목차에서 '폼을 보아하니'를 누르면 돌아올 홈 */
   try { sessionStorage.setItem('haebwaya-home', location.pathname.split('/').pop() || 'index.html'); } catch (e) {}
 
   /* 사진 목록은 images/colors.js(사진별 평균색, 페이지와 함께 바로 옴)에서 바로 정함 → 시트를 기다리지 않음.
@@ -985,7 +1033,7 @@ const heat = (() => {
   if (!items.length) { IMAGES = list; build(); }                // colors.js가 있으면 여기서 처음 그림 (바로 평균색)
   else { IMAGES = list; items.forEach((el, i) => { el._data = IMAGES[i]; el.style.setProperty('--solid', IMAGES[i].solid); }); }
   items.forEach((el, i) => { el._i = i; });
-  loadAll(pool);
+  revealVisible();
 })();
 /* ═════════ 맨 위로 ↑ (모든 페이지 공통) ═════════ */
 (() => {
@@ -995,6 +1043,28 @@ const heat = (() => {
     if (!up.dataset.painted && colors.name) { paint(up, colors.name); up.dataset.painted = 1; }
     up.classList.toggle('show', scrollY > innerWidth / 24);   // 반 칸 이상 내리면
   }, { passive: true });
+})();
+</script>
+<script>
+/* 2026-10-17 공통: ① 새로고침하면 항상 그 페이지 맨 위에서 시작 (브라우저가 스크롤 자리를 기억하지 않게)
+   ② 아무 조작 없이 2분이 지나면 메인 화면 맨 위로 돌아감 (메인이면 맨 위로 올리고 열린 것들을 닫음) */
+(() => {
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  addEventListener('load', () => scrollTo(0, 0));
+  addEventListener('pageshow', e => { if (e.persisted) scrollTo(0, 0); });
+  const IDLE = 2 * 60 * 1000;
+  const home = () => { try { return sessionStorage.getItem('haebwaya-home') || 'index.html'; } catch (e) { return 'index.html'; } };
+  const onHome = () => { const f = location.pathname.split('/').pop() || 'index.html'; return f === home() || f.startsWith('index'); };
+  let t;
+  const goHome = () => {
+    if (!onHome()) { location.href = home(); return; }
+    try { if (typeof closeItem === 'function') closeItem(); if (typeof toggleOverview === 'function') toggleOverview(false); if (typeof toggleMenu === 'function') toggleMenu(false); } catch (e) {}
+    scrollTo({ top: 0, behavior: 'smooth' });
+    reset();
+  };
+  const reset = () => { clearTimeout(t); t = setTimeout(goHome, IDLE); };
+  ['pointermove', 'pointerdown', 'wheel', 'scroll', 'keydown', 'touchstart'].forEach(ev => addEventListener(ev, reset, { passive: true }));
+  reset();
 })();
 </script>
 </body>

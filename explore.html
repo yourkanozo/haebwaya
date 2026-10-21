@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>탐색 — 해봐야 아는 것들</title>
+<title>탐색 — 폼을 보아하니</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@v2.0/nanumsquare.css">
 <style>
   /* ───────── 탐색 (web-rules.md 4-4) ─────────
@@ -119,16 +119,23 @@
   .item { position: relative; cursor: pointer; transform-origin: 0 0; }
   .item::before { content: ''; position: absolute; inset: 0; background: #111 var(--img) center / cover; }
   /* 로딩: 메인과 같음 — 단색 → 반은 사진·반은 단색 → 사진 ('탁탁' 바뀜). 0.4초 안에 오거나 화면 밖이면 바로 사진 */
-  .item::after { content: ''; position: absolute; inset: 0; background: var(--solid, #2a2622); }
-  .item.half-x::after { clip-path: inset(0 0 0 50%); }
-  .item.half-y::after { clip-path: inset(50% 0 0 0); }
-  .item.done::after { display: none; }
-  /* 고를 때 (2026-10-14): 사라짐 = 사진 → 반 단색·반 사진 → 반만 단색 → 빈칸 / 나타남 = 빈칸 → 단색 → 반 → 사진 */
-  .item.gone::before, .item.gone::after, .item.nopic::before { visibility: hidden; }
+  /* 로딩 (2026-10-17): 단색 → 사진이 '스르륵' (단색이 한쪽 가장자리로 걷힘). 스크롤 중엔 단색, 멈추면 보이는 것부터 */
+  .item::after { content: ''; position: absolute; inset: 0; background: var(--solid, #2a2622); clip-path: inset(0); transition: clip-path var(--reveal, .6s) var(--ease); }
+  .item.done.d-r::after { clip-path: inset(0 0 0 100%); }
+  .item.done.d-l::after { clip-path: inset(0 100% 0 0); }
+  .item.done.d-d::after { clip-path: inset(100% 0 0 0); }
+  .item.done.d-u::after { clip-path: inset(0 0 100% 0); }
+  /* 고를 때: 칸 자체가 한쪽 가장자리로 스르륵 사라지고 / 스르륵 나타남 */
+  .item { clip-path: inset(0); transition: clip-path .45s var(--ease); }
+  .item.gone.d-r { clip-path: inset(0 0 0 100%); }
+  .item.gone.d-l { clip-path: inset(0 100% 0 0); }
+  .item.gone.d-d { clip-path: inset(100% 0 0 0); }
+  .item.gone.d-u { clip-path: inset(0 0 100% 0); }
+  .item.now, .item.now::after { transition: none !important; }
   .item.gone, .item.ghost { pointer-events: none; }
   .item.noimg::before { background: #141414; }
   .item.noimg::after { display: block; background: none; clip-path: none; content: attr(data-code); position: absolute; left: calc(var(--u) * 14); bottom: calc(var(--u) * 12); font-size: var(--fs-s); opacity: .45; }
-  .item.open { z-index: 4; cursor: zoom-out; }
+  .item.open { z-index: 4; cursor: pointer; }
   /* 설명 창: 메인과 같음 — 사진 평균색, 사진 쪽 가장자리에서 펼쳐짐 */
   .info { z-index: 3; background: var(--solid); color: var(--fg); padding: var(--gut); display: flex; flex-direction: column;
           clip-path: inset(0 0 0 0); animation: infoIn var(--info-dur, .8s) var(--ease) var(--info-delay, 0s) backwards; }
@@ -177,6 +184,21 @@
   .fab .i-x { display: none; }
   .fab.open .i-x { display: block; }
   .fab.open .i-ham { display: none; }
+
+  /* ───────── 메뉴 = 화면 오른쪽 끝의 세로 인덱스 탭 (2026-10-15) ─────────
+     햄버거 칸도 메뉴 칸과 같은 크기(1.5칸 × 반 칸)로 화면 오른쪽 끝에 붙어, 옆에서 밀려 나옴.
+     누르면 홈·아티클·탐색 칸이 그 아래로 하나씩 옆에서 밀려 나와 이어짐 */
+  .dock { right: 0 !important; }
+  .fab { width: calc(var(--cell) * 1.5) !important; justify-content: flex-start !important; padding: 0 var(--gut) !important;
+         clip-path: none !important; transform: translateX(100%); transition: transform .5s var(--ease) !important; }
+  .fab.show { transform: none; }
+  /* 2026-10-17: 메뉴 칸은 햄버거 칸 밑에서 아래로 펼쳐짐 — 사진이 밀려 내려가는 움직임과 같음 (같은 곡선·0.7초·칸마다 0.04초 차례) */
+  .fab { position: relative; z-index: 2; }
+  .menu { align-items: flex-end !important; position: relative; z-index: 1; overflow: hidden; }
+  .menu a, .menu button { width: calc(var(--cell) * 1.5) !important; height: calc(var(--cell) / 2) !important;
+    clip-path: none !important; position: relative; z-index: calc(10 - var(--i)); transform: translateY(calc(-100% * (var(--i) + 1)));   /* 위 칸이 아래 칸을 덮은 채로 차례로 펼쳐짐 */
+    transition: transform .7s cubic-bezier(.25, .1, .25, 1) calc(var(--i) * 40ms) !important; }
+  .menu.on a, .menu.on button { transform: none; }
 </style>
 <script src="images/colors.js"></script>   <!-- 사진별 평균색 (없으면 임시 색) -->
 </head>
@@ -226,9 +248,19 @@ const PALETTE = ['#344164','#664f3b','#942d40','#9f681f','#7b6182','#d55d26','#c
 const ARROW = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M1 8h13M9 3l5 5-5 5"/></svg>';
 const DOWN = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="m3 6 5 5 5-5"/></svg>';
 const UP = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M8 14V2M2 8l6-6 6 6"/></svg>';
+const rand = n => Math.floor(Math.random() * n);
+const loadImage = src => new Promise(res => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = src; });
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const fgOf = h => { const [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); return (r * 299 + g * 587 + b * 114) / 1000 >= 150 ? '#000' : '#fff'; };
 const mixHex = (h, to, t) => '#' + [1, 3, 5].map(i => { const a = parseInt(h.slice(i, i + 2), 16), b = parseInt(to.slice(i, i + 2), 16); return Math.round(a + (b - a) * t).toString(16).padStart(2, '0'); }).join('');
+/* 2026-10-17: 하위 태그는 묶음 색(동사/분야 박스 색)과 비슷한 여러 색으로 → 키 하나하나가 나뉜 박스처럼 보임 */
+const toHsl = h => { let [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255); const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2; let hh = 0, ss = 0;
+  if (mx !== mn) { const d = mx - mn; ss = l > .5 ? d / (2 - mx - mn) : d / (mx + mn); hh = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; hh *= 60; } return [hh, ss, l]; };
+const fromHsl = (h, s, l) => { h = ((h % 360) + 360) % 360; const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = n => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+  return '#' + [0, 8, 4].map(n => Math.round(f(n) * 255).toString(16).padStart(2, '0')).join(''); };
+const clamp01 = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const variantOf = (base, i) => { const [h, s, l] = toHsl(base);                  // 같은 색상 안에서 채도·명도만 조금씩 (태그 순서로 정해져 늘 같음)
+  return fromHsl(h, clamp01(s + ((i * 53) % 29 - 14) / 100, .06, .95), clamp01(l + ((i * 29) % 23 - 11) / 100, .12, .9)); };   // 색상(hue)은 그대로, 채도·명도만 (10/17)
 const setGrp = (el, c) => {                                      // 태그 색: 박스 색 / 진하게(호버·고름) / 연하게(해당 없음)
   const md = mixHex(c, '#000000', .25), dk = mixHex(c, '#000000', .5), lt = mixHex(c, '#ffffff', .6);
   [['--grp', c], ['--grp-fg', fgOf(c)], ['--grp-md', md], ['--grp-md-fg', fgOf(md)], ['--grp-dk', dk], ['--grp-dk-fg', fgOf(dk)], ['--grp-lt', lt], ['--grp-lt-fg', mixHex(lt, '#000000', .45)]].forEach(([k, v]) => el.style.setProperty(k, v));
@@ -252,7 +284,7 @@ const countWith = s => ITEMS.reduce((n, it) => n + (fits(it, s) ? 1 : 0), 0);
 /* ═════════ 1줄 박스 ═════════ */
 const topEl = document.getElementById('top');
 topEl.innerHTML =
-  `<a class="box b-name" href="${homeUrl()}" style="--delay:0s"><span class="t">해봐야 아는 것들</span><span class="s">interface archiving</span></a>` +
+  `<a class="box b-name" href="${homeUrl()}" style="--delay:0s"><span class="t">폼을 보아하니</span><span class="s">interface archiving</span></a>` +
   `<label class="box b-search" style="--delay:.09s"><span class="t">검색</span><span class="cnt"><b id="cnt">–</b>개</span><input id="q" type="search" placeholder="이름, 원리, 동사로 찾기" autocomplete="off"></label>` +
   `<button class="box b-grp b-field" id="gField" type="button" data-g="fields"><span class="t">분야</span><span class="s">단일 선택 ${DOWN}</span></button>` +
   `<button class="box b-grp b-verb" id="gVerb" type="button" data-g="verbs"><span class="t">동사</span><span class="s">복수 선택 ${DOWN}</span></button>` +
@@ -274,6 +306,8 @@ paint(fab, C.name);
   el.addEventListener('click', () => { toggleMenu(false); m.act && m.act(); });
   menu.appendChild(el);
 });
+  { const used = [...menu.children].map(e => e.style.getPropertyValue('--bg').toLowerCase()); const free = PALETTE.filter(c => !used.includes(c.toLowerCase())); paint(fab, free[Math.floor(Math.random() * free.length)]); }   // 햄버거 칸은 메뉴 칸들과 다른 색 → 탭끼리 구분됨 (2026-10-15)
+fab.classList.add('show');                                     // 탐색: 메뉴 칸은 처음부터 (옆에서 밀려 나옴)
 function toggleMenu(on) { const v = menu.classList.toggle('on', on ?? !menu.classList.contains('on')); fab.classList.toggle('open', v); }   // 메뉴는 사진 위에 떠 있어서 히트맵 없음
 fab.addEventListener('click', e => { e.stopPropagation(); toggleMenu(); });
 document.addEventListener('click', e => { if (!e.target.closest('.menu, .fab')) toggleMenu(false); });
@@ -288,7 +322,7 @@ function buildPanel() {
   panel.innerHTML =
     `<div class="tags verbs" style="--rows:${rowsFor(VERBS.length)}">${VERBS.map(v => tag('verbs', v)).join('')}</div>` +
     `<div class="tags fields" style="--rows:${rowsFor(FIELDS.length)}">${FIELDS.map(v => tag('field', v)).join('')}</div>`;
-  [['.tags.verbs', C.verb], ['.tags.fields', C.field]].forEach(([q, c]) => setGrp(panel.querySelector(q), c));
+  [['.tags.verbs', C.verb], ['.tags.fields', C.field]].forEach(([q, c]) => { const g = panel.querySelector(q); setGrp(g, c); [...g.querySelectorAll('.tag')].forEach((t, i) => setGrp(t, variantOf(c, i))); });
   panel.querySelectorAll('.tag[data-k]').forEach(b => b.addEventListener('click', () => {
     const v = b.dataset.v;
     if (b.dataset.k === 'verbs') sel.verbs.has(v) ? sel.verbs.delete(v) : sel.verbs.add(v);
@@ -301,6 +335,7 @@ function buildPanel() {
    다시 누르면 접히며 사진들이 돌아옴. 다른 쪽을 누르면 판 내용만 바뀜 */
 let openGroup = null;
 function showGroup(g, animate = true) {
+  setTimeout(revealVisible, MOTION.pushDur + 400);             // 판이 열리고 닫혀 사진이 움직인 뒤 새로 보이는 사진
   const before = new Map(items.map(el => [el, el.getBoundingClientRect()]));
   const oldH = panel.offsetHeight, prev = openGroup;
   panel.getAnimations().forEach(a => a.cancel());
@@ -416,7 +451,7 @@ function closeDom(instant = false) {
   }
   openEl = infoEl = null;
 }
-function closeItem() { if (openEl) { const f = openEl; flipOpen(() => { closeDom(); restoreAll(); }, { focus: f, opening: false }); } }
+function closeItem() { if (openEl) { heat.fast(2000); const f = openEl; flipOpen(() => { closeDom(); restoreAll(); }, { focus: f, opening: false }); } }
 /* 열고 닫을 때의 움직임 (메인의 flip과 같음) */
 let anims = [];
 function flipOpen(change, { focus, opening, switching = false }) {
@@ -459,6 +494,7 @@ function flipOpen(change, { focus, opening, switching = false }) {
     { transform: `translate(${a.left - b.left}px, ${a.top - b.top}px) scale(${a.width / b.width})` },
     { transform: 'none' }], { duration: gDur, delay: gDelay, easing: ease, fill: 'backwards' }));
   heat.track(focus, gDelay + gDur + 50, true);
+  setTimeout(revealVisible, Math.max(pushEnd, gDelay + gDur) + 120);   // 움직임이 끝난 뒤 새로 보이는 사진
   if (opening && infoEl) {
     infoEl.style.setProperty('--info-delay', Math.max(pushEnd, gDelay + gDur) / 1000 + 's');   // 밀림·커짐이 다 끝난 뒤 설명이 나옴
     infoEl.style.setProperty('--info-dur', MOTION.infoDur / 1000 + 's');
@@ -490,31 +526,39 @@ function avgColor(img) {                                         // 사진 평�
 let cells = new Map();                                          // id → 아이템 칸 (다시 만들지 않고 넣다 뺐다 함)
 /* 사진 오기 전 단색 (메인의 미리 계산해 둔 색을 돌려 씀) → 사진이 오면 그 사진 평균색 */
 const SOLIDS = ['#4a3b35','#958676','#3c3126','#7f482b','#8a7a6b','#d3c2ad','#251d16','#443a2f','#27211d','#b4a391','#cab59d','#ba9079','#ccbaa4','#c6ac86','#37262a','#201c1e','#c0a787','#181312','#a28b70','#29231d','#aba492','#b5987d','#7a7c80','#8b8e92'];
-const LOAD_STEP = 40, HALF_HOLD = 140;                          // 메인과 같은 값
-/* 2026-10-14: 모든 사진은 '로딩처럼' 나옴 — 화면에 보이면 왼쪽 위부터 탁탁, 화면 밖이면 스크롤해서 보일 때 탁탁 */
-const revealQueue = []; let revealing = false;
+const LOAD_STEP = 45, LAZY_IDLE = 100;                          // 메인과 같은 값
+/* 로딩 (2026-10-17): 메인과 같음 — 스크롤하는 동안은 단색, 멈추면 화면에 보이는 것부터 사진이 스르륵 (레이지 로드) */
 const inView = el => { if (!el.isConnected) return false; const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; };
 const byPos = (a, b) => { const A = a.getBoundingClientRect(), B = b.getBoundingClientRect(); return (A.top - B.top) || (A.left - B.left); };
-const seen = new IntersectionObserver(es => es.forEach(e => {
-  if (!e.isIntersecting) return;
-  seen.unobserve(e.target);
-  if (e.target._src && !e.target.classList.contains('done')) queueReveal(e.target);
+let scrolling = false, scrollIdle, holdReveal = false;
+addEventListener('scroll', () => { scrolling = true; clearTimeout(scrollIdle); scrollIdle = setTimeout(() => { scrolling = false; revealVisible(); }, LAZY_IDLE); }, { passive: true });
+const imgCache = new Map();
+const getImg = src => { if (!imgCache.has(src)) imgCache.set(src, loadImage(src)); return imgCache.get(src); };
+const DIRS = ['d-r'];   // 10/18: 사진은 늘 왼쪽 → 오른쪽으로 드러남 (단색이 오른쪽으로 걷힘)
+const setDir = el => { el.classList.remove(...DIRS); el.classList.add(DIRS[rand(DIRS.length)]); };
+/* 2026-10-17: 화면 밖으로 나간 사진은 다시 단색으로 → 돌아오면 레이지 로드로 다시 스르륵 */
+const outIO = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting) return;
+  const el = e.target; outIO.unobserve(el);
+  if (!el._shown) return;
+  el.classList.add('now'); el.classList.remove('done'); el._shown = false; el._q = false;
+  requestAnimationFrame(() => el.classList.remove('now'));
 }));
-function queueReveal(el) {
-  if (revealQueue.includes(el)) return;
-  revealQueue.push(el); revealQueue.sort(byPos);
+function showImg(el) { el._shown = true; el.style.setProperty('--img', `url(${el._src})`); setDir(el); void el.offsetWidth; el.classList.add('done'); outIO.observe(el); }
+const revealQueue = []; let revealing = false;
+function revealVisible() {
+  if (scrolling || holdReveal) return;
+  items.filter(el => !el._shown && !el._q && !el.classList.contains('gone') && inView(el)).sort(byPos).forEach(el => { el._q = true; revealQueue.push(el); });
   if (!revealing) nextReveal();
 }
 function nextReveal() {
-  let el = revealQueue.shift();
-  while (el && !inView(el)) { seen.observe(el); el = revealQueue.shift(); }   // 차례 오기 전에 화면 밖으로 나갔으면 다시 기다림
+  if (scrolling || holdReveal) { revealQueue.forEach(el => { el._q = false; }); revealQueue.length = 0; revealing = false; return; }
+  const el = revealQueue.shift();
   if (!el) { revealing = false; return; }
-  revealing = true;
-  el.classList.remove('gone', 'nopic');
-  el.style.setProperty('--img', `url(${el._src})`);
-  el.classList.add(Math.random() < 0.5 ? 'half-x' : 'half-y');            // 탁: 반
-  setTimeout(() => { el.classList.remove('half-x', 'half-y'); el.classList.add('done'); }, HALF_HOLD);   // 탁: 사진
-  setTimeout(nextReveal, Math.max(12, Math.min(LOAD_STEP, 600 / (revealQueue.length + 1))));   // 한꺼번에 많이 보이면 간격을 좁혀 한 화면이 1초 남짓에 다 나오게
+  revealing = true; el._q = false;
+  if (el._shown || !inView(el)) return nextReveal();
+  getImg(el._src).then(img => { if (!img) { el.classList.add('noimg'); return; } if (!el._shown && !scrolling && !holdReveal && inView(el) && !el.classList.contains('gone')) showImg(el); });
+  setTimeout(nextReveal, Math.max(12, Math.min(LOAD_STEP, 700 / (revealQueue.length + 1))));
 }
 function cellFor(it) {
   if (cells.has(it.id)) { const el = cells.get(it.id); el._it = it; return el; }   // 시트가 오면 정보만 바꿔 끼움
@@ -523,15 +567,8 @@ function cellFor(it) {
   const pre = (window.IMAGE_COLORS || {})[it.id];
   if (pre) el._solid = pre;
   el.style.setProperty('--solid', pre || '#000');   // 미리 계산한 그 사진의 평균색 (없으면 검정 → 튀지 않게)
-  const im = new Image();
-  im.onload = () => {
-    el._src = im.src;
-    if (!pre) { const avg = avgColor(im); if (avg) { el._solid = avg; el.style.setProperty('--solid', avg); } }
-    el.style.setProperty('--img', `url(${im.src})`);
-    if (inView(el)) queueReveal(el); else seen.observe(el);   // 화면에 보이면 바로 탁탁, 아니면 보일 때
-  };
-  im.onerror = () => el.classList.add('noimg');                // 아직 사진이 없는 id
-  im.src = imgPath(it.id);
+  el._src = imgPath(it.id);                                    // 사진은 멈춰 있을 때 보이면 그때 받음 (레이지 로드)
+  setDir(el);
   cells.set(it.id, el);
   return el;
 }
@@ -570,47 +607,45 @@ function update(swap = false) {
   /* 결과: 맞는 것만 왼쪽 위부터 */
   anims.forEach(a => a.finish()); anims = [];
   closeDom(true);
-  if (swap) swapResults(hits); else layoutResults(hits);
+  if (swap) swapResults(hits); else { layoutResults(hits); setTimeout(revealVisible, 60); }
 }
-/* 고를 때 (2026-10-14): 사진이 로딩을 거꾸로 하듯 슉슉 사라지고, 어느 정도 사라지면 그와 동시에 맞는 사진이 로딩처럼 슉슉 나옴 (왼쪽 위부터)
-   사라짐: 사진 → 반 단색·반 사진 → 반만 단색 → 빈칸 / 나타남: 빈칸 → 단색 → 반 → 사진
-   화면 밖 사진은 기다렸다가 스크롤해서 보일 때 나옴. 아직 다 안 사라진 사진은 그 자리에 '그림자'로 남겨 마저 사라지게 함 */
-const SWAP = { step: 18, hold: 70, lead: 260 };                 // 사진 사이 간격, 한 단계 머무는 시간, 사라지기 시작하고 나타나기 시작할 때까지 (ms)
+/* 고를 때 (2026-10-17): 사진 → 단색이 스르륵 덮이고 → 칸이 한쪽으로 스르륵 사라짐. 어느 정도 사라지면 그와 동시에
+   맞는 칸이 스르륵 나타나고(단색) → 멈춰 있으면 사진이 스르륵 (로딩과 같음). 왼쪽 위부터 차례로
+   아직 사라지는 중인 칸은 그 자리에 '그림자'로 남겨 마저 사라지게 함 */
+const SWAP = { step: 22, cover: 300, lead: 380 };              // 칸 사이 간격, 단색이 덮이는 시간, 사라지기 시작하고 나타나기 시작할 때까지 (ms)
 let swapGen = 0;
 results.style.position = 'relative';
 function swapResults(hits) {
   const gen = ++swapGen, later = (ms, fn) => setTimeout(() => { if (gen === swapGen) fn(); }, ms);
   results.querySelectorAll('.ghost').forEach(g => g.remove());
-  seen.disconnect(); revealQueue.length = 0;
-  const half = () => Math.random() < 0.5 ? 'half-x' : 'half-y';
-  const set = (n, ...cls) => { n.classList.remove('half-x', 'half-y', 'gone', 'nopic', 'done'); n.classList.add(...cls); };
+  revealQueue.length = 0; holdReveal = true;
   /* 사라짐 */
-  const outs = items.filter(inView).map(el => ({ node: el, h: half(), had: el.classList.contains('done') }));
+  const outs = items.filter(inView).map(el => ({ node: el }));
   outs.forEach((o, i) => {
-    later(i * SWAP.step, () => { o.had ? set(o.node, o.h) : set(o.node, o.h, 'nopic'); heat.track(o.node, SWAP.hold, false, true); });   // 반 단색·반 사진
-    later(i * SWAP.step + SWAP.hold, () => set(o.node, o.h, 'nopic'));                    // 반만 단색
-    later(i * SWAP.step + SWAP.hold * 2, () => { set(o.node, 'gone'); o.end = true; if (o.ghost) o.node.remove(); });   // 빈칸
+    later(i * SWAP.step, () => { o.node.classList.remove('done'); heat.track(o.node, 300, false, true); });   // 사진 위로 단색이 스르륵
+    later(i * SWAP.step + SWAP.cover, () => { setDir(o.node); o.node.classList.add('gone'); });                             // 칸이 스르륵 사라짐
+    later(i * SWAP.step + SWAP.cover + 460, () => { o.end = true; if (o.ghost) o.node.remove(); });
   });
-  const lead = Math.min(SWAP.lead, outs.length ? (outs.length - 1) * SWAP.step + SWAP.hold * 2 + 40 : 0);
-  /* 나타남: 어느 정도 사라지면 바로 */
+  const lead = Math.min(SWAP.lead, outs.length ? (outs.length - 1) * SWAP.step + SWAP.cover + 460 : 0);
+  /* 나타남 */
   later(lead, () => {
     const box = results.getBoundingClientRect();
     const left = outs.filter(o => !o.end).map(o => ({ o, r: o.node.getBoundingClientRect() }));
+    items.forEach(el => { el.classList.add('now'); el.classList.remove('done', 'gone'); el._shown = false; el._q = false; });
     layoutResults(hits);
-    left.forEach(({ o, r }) => {                                // 아직 사라지는 중인 사진 → 그 자리에 그림자로 남김
+    left.forEach(({ o, r }) => {                                // 아직 사라지는 중인 칸 → 그 자리에 그림자로
       const g = o.node.cloneNode(false);
-      g.classList.add('ghost'); g.classList.remove('open');
+      g.classList.add('ghost'); g.classList.remove('open', 'now');
       Object.assign(g.style, { position: 'absolute', left: r.left - box.left + 'px', top: r.top - box.top + 'px', width: r.width + 'px', height: r.height + 'px', gridColumn: 'auto', gridRow: 'auto', zIndex: 2 });
       results.appendChild(g); o.node = g; o.ghost = true;
     });
     const fresh = items.filter(inView);
-    items.forEach(el => { if (fresh.includes(el)) set(el, 'gone'); else { set(el); if (el._src) seen.observe(el); } });   // 화면 밖: 단색으로 기다림
-    fresh.forEach((el, i) => {
-      later(i * SWAP.step, () => { set(el); heat.track(el, SWAP.hold, false, true); });          // 단색
-      if (!el._src) return;                                     // 사진이 아직이면 단색에서 기다림 (오면 평소대로)
-      later(i * SWAP.step + SWAP.hold, () => set(el, half()));                       // 반
-      later(i * SWAP.step + SWAP.hold * 2, () => set(el, 'done'));                   // 사진
-    });
+    items.forEach(el => { el.classList.add('now'); el.classList.remove('done', 'gone'); el._shown = false; });
+    fresh.forEach(el => { setDir(el); el.classList.add('gone'); });
+    void results.offsetWidth;
+    items.forEach(el => el.classList.remove('now'));
+    fresh.forEach((el, i) => later(i * SWAP.step, () => { el.classList.remove('gone'); heat.track(el, 300, false, true); }));   // 칸이 스르륵 나타남 (단색)
+    later(fresh.length * SWAP.step + 450, () => { holdReveal = false; revealVisible(); });                              // 그다음 사진이 스르륵
   });
 }
 let qTimer; document.getElementById('q').addEventListener('input', e => { clearTimeout(qTimer); qTimer = setTimeout(() => { sel.q = e.target.value.trim().toLowerCase(); update(true); }, 250); });
@@ -629,10 +664,13 @@ const HEAT = {
   heatScrollBlob: 0.12,      // 스크롤 잔상의 번짐 크기 (칸 대비)
   heatFollow: 0.7,           // 스크롤할 때 열이 페이지를 따라가는 정도
   heatSpread: 0.07,           // 식으면서 옆으로 퍼지는 정도. 클수록 둥글게 뭉개짐 (10/14: 0.1 → 0.04 → 0.07)
-  heatCool: 0.965,           // 한 프레임마다 남는 열 (1에 가까울수록 늦게 식음). 10/14: 0.986 → 0.975 → 0.965 (꼬리 짧게)
+  heatCoolFast: 0.93,        // 사진 설명이 닫히고 사진이 돌아오는 동안만 쓰는 빠른 식음 (10/17)
+  heatEmber: 0.15,           // 이보다 옅은 열은 잔열 — 식는 속도를 0.4배로 늦춤 (10/17)
+  heatCool: 0.985,           // 한 프레임마다 남는 열 (1에 가까울수록 늦게 식음). 10/14: 0.986 → 0.975 → 0.965 (꼬리 짧게) → 0.985 (10/17: 잔열이 오래 남게)
 };
 /* ═════════ 히트맵 (메인과 같은 규칙: 마우스 · 움직이는 사진 · 스크롤) — 빈 곳(검정)으로만 보임 ═════════ */
 const heat = (() => {
+  let fastUntil = 0;
   const S = 0.25;                       // 해상도 (화면의 1/4)
   const canvas = document.getElementById('heat');
   if (!HEAT.heat) { canvas.remove(); return { track() {} }; }     // 히트맵 끈 버전: 빈 칸은 그냥 검정
@@ -701,16 +739,11 @@ const heat = (() => {
     for (let n = 0; n < M.length; n++) if (M[n] > 0.01) T[n] = Math.min(1, T[n] + M[n] * k);
     M.fill(0); massDirty = false;
   }
-  function color(v) {                    // 예전 색 (2026-10-15 되돌림): 남색 → 파랑 → 보라 → 빨강 (heatMax 0.6에서 멈춤 → 주황·노랑·흰색은 안 씀)
-    let r, g, b, t;
-    if (v < 0.15)      { t = v / 0.15;          r = 5 + t * 5;     g = 5 + t * 15;   b = 20 + t * 70; }
-    else if (v < 0.30) { t = (v - 0.15) / 0.15; r = 10 + t * 20;   g = 20 + t * 20;  b = 90 + t * 130; }
-    else if (v < 0.45) { t = (v - 0.30) / 0.15; r = 30 + t * 90;   g = 40 - t * 20;  b = 220 - t * 80; }
-    else if (v < 0.60) { t = (v - 0.45) / 0.15; r = 120 + t * 135; g = 20 + t * 20;  b = 140 - t * 130; }
-    else if (v < 0.75) { t = (v - 0.60) / 0.15; r = 255;           g = 40 + t * 130; b = 10; }
-    else if (v < 0.90) { t = (v - 0.75) / 0.15; r = 255;           g = 170 + t * 75; b = t * 10; }
-    else               { t = (v - 0.90) / 0.10; r = 255;           g = 245 + t * 10; b = 10 + t * 245; }
-    return [r, g, b];
+  function color(v) {                    // 검정 → 파랑 → 초록 → 노랑 → 빨강 (heatMax에서 멈춤) — 2026-10-17 다시 이 색으로
+    const S = [[0.0, 0, 0, 0], [0.06, 0, 0, 0], [0.285, 30, 40, 220], [0.48, 0, 235, 60], [0.54, 255, 230, 0], [0.585, 235, 0, 10], [0.6, 235, 0, 10], [1, 235, 0, 10]];   // 검정 2 : 파랑 5.5 : 초록 1 : 노랑 1 : 빨강 0.5 (2026-10-14)
+    let i = 1; while (i < S.length - 1 && v > S[i][0]) i++;
+    const [a, b] = [S[i - 1], S[i]], t = Math.min(1, Math.max(0, (v - a[0]) / (b[0] - a[0])));
+    return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t];
   }
   function frame() {
     /* 스크롤: 열은 페이지를 일부만 따라감(HEAT.heatFollow) → 화면 위를 지나가는 아이템이 빈 칸에 잔상을 남김 */
@@ -760,13 +793,14 @@ const heat = (() => {
       list.forEach(([r, v]) => stampPad(r, HEAT.heatPad[b], v));
       flushMass(HEAT.heatMove[b]);
     });
+    const fastNow = performance.now() < fastUntil;      // 설명이 닫히는 동안만 빨리 식음 (10/17)
     /* 식고 퍼짐 */
     let max = 0;
     for (let j = 0; j < fh; j++) for (let i = 0; i < fw; i++) {
       const k = j * fw + i;
       const l = i > 0 ? T[k - 1] : T[k], r = i < fw - 1 ? T[k + 1] : T[k];
       const u = j > 0 ? T[k - fw] : T[k], d = j < fh - 1 ? T[k + fw] : T[k];
-      B[k] = (T[k] * (1 - 4 * HEAT.heatSpread) + (l + r + u + d) * HEAT.heatSpread) * HEAT.heatCool;
+      B[k] = (T[k] * (1 - 4 * HEAT.heatSpread) + (l + r + u + d) * HEAT.heatSpread) * (fastNow ? HEAT.heatCoolFast : T[k] < HEAT.heatEmber ? 1 - (1 - HEAT.heatCool) * .4 : HEAT.heatCool);   // 옅게 남은 열(잔열)은 더 천천히 식음
       if (B[k] > max) max = B[k];
     }
     [T, B] = [B, T];
@@ -801,7 +835,7 @@ const heat = (() => {
   addEventListener('scroll', () => { if (!running) { running = true; requestAnimationFrame(frame); } }, { passive: true });   // 스크롤도 열을 만듦
   resize();
   addEventListener('resize', resize);
-  return { track(el, ms, big = false, area = false) { const o = movers.get(el); movers.set(el, { until: performance.now() + ms, big, area, last: o && o.last }); wake(); } };   // big: 커지고 작아지는 사진
+  return { fast(ms) { fastUntil = performance.now() + ms; }, track(el, ms, big = false, area = false) { const o = movers.get(el); movers.set(el, { until: performance.now() + ms, big, area, last: o && o.last }); wake(); } };   // big: 커지고 작아지는 사진
 })();
 
 
@@ -819,6 +853,28 @@ const heat = (() => {
   FIELDS = [...new Set(ITEMS.map(it => it.field))].sort(ko);
   buildPanel();
   update();
+})();
+</script>
+<script>
+/* 2026-10-17 공통: ① 새로고침하면 항상 그 페이지 맨 위에서 시작 (브라우저가 스크롤 자리를 기억하지 않게)
+   ② 아무 조작 없이 2분이 지나면 메인 화면 맨 위로 돌아감 (메인이면 맨 위로 올리고 열린 것들을 닫음) */
+(() => {
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  addEventListener('load', () => scrollTo(0, 0));
+  addEventListener('pageshow', e => { if (e.persisted) scrollTo(0, 0); });
+  const IDLE = 2 * 60 * 1000;
+  const home = () => { try { return sessionStorage.getItem('haebwaya-home') || 'index.html'; } catch (e) { return 'index.html'; } };
+  const onHome = () => { const f = location.pathname.split('/').pop() || 'index.html'; return f === home() || f.startsWith('index'); };
+  let t;
+  const goHome = () => {
+    if (!onHome()) { location.href = home(); return; }
+    try { if (typeof closeItem === 'function') closeItem(); if (typeof toggleOverview === 'function') toggleOverview(false); if (typeof toggleMenu === 'function') toggleMenu(false); } catch (e) {}
+    scrollTo({ top: 0, behavior: 'smooth' });
+    reset();
+  };
+  const reset = () => { clearTimeout(t); t = setTimeout(goHome, IDLE); };
+  ['pointermove', 'pointerdown', 'wheel', 'scroll', 'keydown', 'touchstart'].forEach(ev => addEventListener(ev, reset, { passive: true }));
+  reset();
 })();
 </script>
 </body>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>아티클 — 해봐야 아는 것들</title>
+<title>아티클 — 폼을 보아하니</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@v2.0/nanumsquare.css">
 <style>
   /* ───────── 아티클 글 (web-rules.md 4-3) ─────────
@@ -108,6 +108,21 @@
             clip-path: inset(100% 0 0 0); transition: clip-path .5s var(--ease); pointer-events: none; }
   .to-top.show { clip-path: inset(0); pointer-events: auto; }
   .to-top svg { width: calc(var(--u) * 22); height: calc(var(--u) * 22); }
+
+  /* ───────── 메뉴 = 화면 오른쪽 끝의 세로 인덱스 탭 (2026-10-15) ─────────
+     햄버거 칸도 메뉴 칸과 같은 크기(1.5칸 × 반 칸)로 화면 오른쪽 끝에 붙어, 옆에서 밀려 나옴.
+     누르면 홈·아티클·탐색 칸이 그 아래로 하나씩 옆에서 밀려 나와 이어짐 */
+  .dock { right: 0 !important; }
+  .fab { width: calc(var(--cell) * 1.5) !important; justify-content: flex-start !important; padding: 0 var(--gut) !important;
+         clip-path: none !important; transform: translateX(100%); transition: transform .5s var(--ease) !important; }
+  .fab.show { transform: none; }
+  /* 2026-10-17: 메뉴 칸은 햄버거 칸 밑에서 아래로 펼쳐짐 — 사진이 밀려 내려가는 움직임과 같음 (같은 곡선·0.7초·칸마다 0.04초 차례) */
+  .fab { position: relative; z-index: 2; }
+  .menu { align-items: flex-end !important; position: relative; z-index: 1; overflow: hidden; }
+  .menu a, .menu button { width: calc(var(--cell) * 1.5) !important; height: calc(var(--cell) / 2) !important;
+    clip-path: none !important; position: relative; z-index: calc(10 - var(--i)); transform: translateY(calc(-100% * (var(--i) + 1)));   /* 위 칸이 아래 칸을 덮은 채로 차례로 펼쳐짐 */
+    transition: transform .7s cubic-bezier(.25, .1, .25, 1) calc(var(--i) * 40ms) !important; }
+  .menu.on a, .menu.on button { transform: none; }
 </style>
 </head>
 <body>
@@ -165,7 +180,7 @@ const cellPx = () => innerWidth / 12;
 const q = new URLSearchParams(location.search).get('a');
 const idx = Math.max(0, ARTICLES.findIndex(a => a.no === q));
 const art = ARTICLES[idx], prev = ARTICLES[idx - 1], next = ARTICLES[idx + 1];
-document.title = `${art.title} — 해봐야 아는 것들`;
+document.title = `${art.title} — 폼을 보아하니`;
 
 const pal = shuffle(PALETTE.slice());
 const colors = { name: pal[0], art: pal[1], prev: pal[2], next: pal[3] };
@@ -188,7 +203,7 @@ const pager = `<div class="pager">
 </div>`;
 
 document.getElementById('page').innerHTML =
-  box('b-name', colors.name, '해봐야 아는 것들', 'interface archiving', homeUrl()) +
+  box('b-name', colors.name, '폼을 보아하니', 'interface archiving', homeUrl()) +
   box('b-art', colors.art, '아티클', `${ARTICLES.length}편`, CONFIG.pages.toc, .09) +
   `<header class="head" id="top"><div class="no">${art.no}</div><h1>${esc(art.title)}</h1><div class="meta">${[art.date, art.verb].filter(Boolean).join(' · ')}</div></header>` +
   tocHtml + `<article class="flow">${flow}</article>` + pager;
@@ -285,16 +300,11 @@ const heat = (() => {
     for (let n = 0; n < M.length; n++) if (M[n] > 0.01) T[n] = Math.min(1, T[n] + M[n] * k);
     M.fill(0); massDirty = false;
   }
-  function color(v) {                    // 예전 색 (2026-10-15 되돌림): 남색 → 파랑 → 보라 → 빨강 (heatMax 0.6에서 멈춤 → 주황·노랑·흰색은 안 씀)
-    let r, g, b, t;
-    if (v < 0.15)      { t = v / 0.15;          r = 5 + t * 5;     g = 5 + t * 15;   b = 20 + t * 70; }
-    else if (v < 0.30) { t = (v - 0.15) / 0.15; r = 10 + t * 20;   g = 20 + t * 20;  b = 90 + t * 130; }
-    else if (v < 0.45) { t = (v - 0.30) / 0.15; r = 30 + t * 90;   g = 40 - t * 20;  b = 220 - t * 80; }
-    else if (v < 0.60) { t = (v - 0.45) / 0.15; r = 120 + t * 135; g = 20 + t * 20;  b = 140 - t * 130; }
-    else if (v < 0.75) { t = (v - 0.60) / 0.15; r = 255;           g = 40 + t * 130; b = 10; }
-    else if (v < 0.90) { t = (v - 0.75) / 0.15; r = 255;           g = 170 + t * 75; b = t * 10; }
-    else               { t = (v - 0.90) / 0.10; r = 255;           g = 245 + t * 10; b = 10 + t * 245; }
-    return [r, g, b];
+  function color(v) {                    // 검정 → 파랑 → 초록 → 노랑 → 빨강 (heatMax에서 멈춤) — 2026-10-17 다시 이 색으로
+    const S = [[0.0, 0, 0, 0], [0.06, 0, 0, 0], [0.285, 30, 40, 220], [0.48, 0, 235, 60], [0.54, 255, 230, 0], [0.585, 235, 0, 10], [0.6, 235, 0, 10], [1, 235, 0, 10]];   // 검정 2 : 파랑 5.5 : 초록 1 : 노랑 1 : 빨강 0.5 (2026-10-14)
+    let i = 1; while (i < S.length - 1 && v > S[i][0]) i++;
+    const [a, b] = [S[i - 1], S[i]], t = Math.min(1, Math.max(0, (v - a[0]) / (b[0] - a[0])));
+    return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3] + (b[3] - a[3]) * t];
   }
   function frame() {
     /* 스크롤: 열은 페이지를 일부만 따라감(HEAT.heatFollow) → 화면 위를 지나가는 아이템이 빈 칸에 잔상을 남김 */
@@ -333,7 +343,7 @@ const heat = (() => {
       const k = j * fw + i;
       const l = i > 0 ? T[k - 1] : T[k], r = i < fw - 1 ? T[k + 1] : T[k];
       const u = j > 0 ? T[k - fw] : T[k], d = j < fh - 1 ? T[k + fw] : T[k];
-      B[k] = (T[k] * 0.6 + (l + r + u + d) * 0.1) * 0.975;   // 식는 속도 (10/14: 0.986 → 0.975, 더 빨리 식게)
+      B[k] = (T[k] * 0.6 + (l + r + u + d) * 0.1) * 0.988;   // 식는 속도 (10/14: 0.986 → 0.975 → 10/17: 0.988 잔열이 오래 남게)
       if (B[k] > max) max = B[k];
     }
     [T, B] = [B, T];
@@ -388,6 +398,7 @@ paint(fab, colors.name);
   el.addEventListener('click', () => { toggleMenu(false); m.act && m.act(); });
   menu.appendChild(el);
 });
+  { const used = [...menu.children].map(e => e.style.getPropertyValue('--bg').toLowerCase()); const free = PALETTE.filter(c => !used.includes(c.toLowerCase())); paint(fab, free[Math.floor(Math.random() * free.length)]); }   // 햄버거 칸은 메뉴 칸들과 다른 색 → 탭끼리 구분됨 (2026-10-15)
 function toggleMenu(on) { const v = menu.classList.toggle('on', on ?? !menu.classList.contains('on')); fab.classList.toggle('open', v); }
 fab.addEventListener('click', e => { e.stopPropagation(); toggleMenu(); });
 document.addEventListener('click', e => { if (!e.target.closest('.menu, .fab')) toggleMenu(false); });
@@ -405,6 +416,28 @@ onScroll();
     if (!up.dataset.painted && colors.name) { paint(up, colors.name); up.dataset.painted = 1; }
     up.classList.toggle('show', scrollY > innerWidth / 24);   // 반 칸 이상 내리면
   }, { passive: true });
+})();
+</script>
+<script>
+/* 2026-10-17 공통: ① 새로고침하면 항상 그 페이지 맨 위에서 시작 (브라우저가 스크롤 자리를 기억하지 않게)
+   ② 아무 조작 없이 2분이 지나면 메인 화면 맨 위로 돌아감 (메인이면 맨 위로 올리고 열린 것들을 닫음) */
+(() => {
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  addEventListener('load', () => scrollTo(0, 0));
+  addEventListener('pageshow', e => { if (e.persisted) scrollTo(0, 0); });
+  const IDLE = 2 * 60 * 1000;
+  const home = () => { try { return sessionStorage.getItem('haebwaya-home') || 'index.html'; } catch (e) { return 'index.html'; } };
+  const onHome = () => { const f = location.pathname.split('/').pop() || 'index.html'; return f === home() || f.startsWith('index'); };
+  let t;
+  const goHome = () => {
+    if (!onHome()) { location.href = home(); return; }
+    try { if (typeof closeItem === 'function') closeItem(); if (typeof toggleOverview === 'function') toggleOverview(false); if (typeof toggleMenu === 'function') toggleMenu(false); } catch (e) {}
+    scrollTo({ top: 0, behavior: 'smooth' });
+    reset();
+  };
+  const reset = () => { clearTimeout(t); t = setTimeout(goHome, IDLE); };
+  ['pointermove', 'pointerdown', 'wheel', 'scroll', 'keydown', 'touchstart'].forEach(ev => addEventListener(ev, reset, { passive: true }));
+  reset();
 })();
 </script>
 </body>
