@@ -41,7 +41,10 @@
     grid-auto-rows: var(--cell);
   }
   .grid > * { position: relative; z-index: 1; }
-  .hole { z-index: 0; pointer-events: none; }      /* 빈 칸: 아무것도 없음 → 아래 히트맵이 보임 */
+  .hole { z-index: 0; pointer-events: none; }
+  /* 10/22: 단색 꼬리 (메인과 같음) */
+  .grid > .tail { position: absolute; z-index: 0; pointer-events: none; }
+  .tail > i { position: absolute; inset: 0; background: var(--solid); }      /* 빈 칸: 아무것도 없음 → 아래 히트맵이 보임 */
 
   /* ───────── 아이템 ───────── */
   .item { cursor: pointer; transform-origin: 0 0; }
@@ -228,8 +231,12 @@
     clip-path: none !important; position: relative; z-index: calc(10 - var(--i)); transform: translateY(calc(-100% * (var(--i) + 1)));   /* 위 칸이 아래 칸을 덮은 채로 차례로 펼쳐짐 */
     transition: transform .7s cubic-bezier(.25, .1, .25, 1) calc(var(--i) * 40ms) !important; }
   .menu.on a, .menu.on button { transform: none; }
+  /* 11/8: EASTARJET Heavy (이스타항공·윤디자인, 산돌구름 무료 서체 — 받은 파일 그대로) — 프로젝트 이름 '폼을 보아하니'에만. 나머지는 나눔스퀘어 라이트 */
+  @font-face { font-family: "EASTARJET"; src: url("fonts/EASTARJET-Heavy.otf") format("opentype"); font-weight: 900; font-display: swap; }
+  .box-name .t, .b-name .t { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 900; }
 </style>
-<script src="images/colors.js"></script>   <!-- 사진별 평균색 (없으면 임시 색) -->
+<script src="images/colors.js"></script>
+<script src="images/sheet_data.js"></script>   <!-- 인터넷이 안 될 때 쓰는 시트 사본 (시트_업데이트.command로 갱신) -->   <!-- 사진별 평균색 (없으면 임시 색) -->
 </head>
 <body>
 
@@ -270,26 +277,21 @@ const CONFIG = {
   heatCool: 0.985,           // 한 프레임마다 남는 열 (1에 가까울수록 늦게 식음). 10/14: 0.986 → 0.975 (더 빨리 식게) → 0.965 (꼬리 짧게) → 0.985 (10/17: 잔열이 오래 남게)
   boxesMove: false,          // true: 박스도 아이템과 같은 규칙으로 아래로 밀려남
   /* 움직임 속도 (2026-10-14: 순서가 또렷하게 지켜지도록 한 단계씩 끝나고 다음이 시작 — 대신 각각은 조금 빠르게) */
-  pushStep: 40,              // 위아래 줄 사이 출발 간격(ms) — 위에서부터 살짝 차례로
-  pushDur: 700,              // 아이템이 내려가는 시간(ms)
-  growDur: 500,              // 선택한 아이템이 커지는 시간(ms)
-  closeDur: 500,             // 열려 있던 아이템이 작아지고 설명이 접히는 시간(ms)
-  infoDur: 600,              // 설명 창이 펼쳐지는 시간(ms)
+  pushStep: 32,              // 위아래 줄 사이 출발 간격(ms) — 위에서부터 살짝 차례로
+  pushDur: 560,              // 아이템이 내려가는 시간(ms)
+  growDur: 400,              // 선택한 아이템이 커지는 시간(ms)
+  closeDur: 400,             // 열려 있던 아이템이 작아지고 설명이 접히는 시간(ms)
+  infoDur: 480,              // 설명 창이 펼쳐지는 시간(ms)
   pages: { article: 'articles.html', explore: 'explore.html' },
 };
 
 const ARROW_OUT = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M1 8h13M9 3l5 5-5 5"/></svg>';   // 이동 (같은 탭)
 const MENU_ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M8 14V2M2 8l6-6 6 6"/></svg>';
 
-/* 아티클 목차 (글이 늘어나면 여기에 추가)
-   rel: 제목 옆에 이어서 보여 줄 관련 사진(시트 id). 2026-10-17 임시로 골라 둔 것 — 글을 쓰면서 바꾸면 됨 */
-const TOC = [
-  { no: '01', title: '버튼의 탄생과 소멸', date: '', rel: ['A0005', 'G0004', 'H0002', 'K0001', 'P0001'] },
-  { no: '02', title: '발로 조작하는 것들', date: '', rel: ['A0004', 'G0003', 'H0003', 'M0001'] },          // 발로 조작하는 사진은 아직 없음 (임시: 페달·바닥 스위치와 닮은 것)
-  { no: '03', title: '트리거의 계보', date: '2026년 10월', verb: '당기다', rel: ['A0003', 'D0002', 'C0003', 'E0001', 'A0008'] },
-  { no: '04', title: '열쇠에서 얼굴까지', date: '', rel: ['F0003', 'J0001', 'B0005', 'A0006', 'K0002'] },
-  { no: '05', title: '온도를 다루다', date: '', rel: ['B0009', 'B0011', 'N0001', 'N0002', 'A0007'] },
-];
+/* 아티클 목차 (2026-11-07: 매거진 1호 '누르다'·2호 '돌리다'의 소칼럼에서 칼럼마다 두 편씩)
+   issue: 매거진 호 / column: 매거진 칼럼 / rel: 제목 옆에 이어서 보여 줄 사진 — 글에 실린 사진 {src, c(평균색)}.
+   (시트 id를 문자열로 넣어도 됨: 그때는 images/아이디.webp) */
+const TOC = [{"no": "01", "title": "고장난 소리를 밟다", "date": "2026년 10월", "verb": "누르다", "issue": "01", "column": "사운드 체크", "dek": "이펙터 · Stompbox", "rel": [{"src": "images/articles/p02-2.webp", "c": "#858079"}, {"src": "images/articles/p02-5.webp", "c": "#695b4e"}, {"src": "images/articles/p02-7.webp", "c": "#333535"}]}, {"no": "02", "title": "123과 789", "date": "2026년 10월", "verb": "누르다", "issue": "01", "column": "손가락이 외운 자리", "dek": "통신 · Telephone Keypad", "rel": [{"src": "images/articles/p03-1.webp", "c": "#d9d1c6"}, {"src": "images/articles/p03-2.webp", "c": "#75736c"}, {"src": "images/articles/p03-3.webp", "c": "#76635a"}, {"src": "images/articles/p03-4.webp", "c": "#79746e"}, {"src": "images/articles/p03-5.webp", "c": "#6b675f"}]}, {"no": "03", "title": "1873년의 자리", "date": "2026년 10월", "verb": "누르다", "issue": "01", "column": "손가락이 외운 자리", "dek": "사무 · QWERTY", "rel": [{"src": "images/articles/p04-1.webp", "c": "#483e2e"}, {"src": "images/articles/p04-2.webp", "c": "#595757"}, {"src": "images/articles/p04-3.webp", "c": "#939884"}, {"src": "images/articles/p04-4.webp", "c": "#a2947d"}, {"src": "images/articles/p04-5.webp", "c": "#7f7466"}]}, {"no": "04", "title": "몇 층 가세요?", "date": "2026년 10월", "verb": "누르다", "issue": "01", "column": "열려라 참깨", "dek": "건물 · Elevator Door Buttons", "rel": [{"src": "images/articles/p05-1.webp", "c": "#614b2e"}, {"src": "images/articles/p05-3.webp", "c": "#2e2d2c"}, {"src": "images/articles/p05-4.webp", "c": "#b8b3a9"}, {"src": "images/articles/p05-5.webp", "c": "#e2c5ac"}]}, {"no": "05", "title": "내리실 문은 왼쪽입니다", "date": "2026년 10월", "verb": "누르다", "issue": "01", "column": "열려라 참깨", "dek": "교통 · Train & Bus Doors", "rel": [{"src": "images/articles/p06-1.webp", "c": "#4e4848"}, {"src": "images/articles/p06-2.webp", "c": "#4e3b1e"}, {"src": "images/articles/p06-3.webp", "c": "#7b7979"}, {"src": "images/articles/p06-4.webp", "c": "#6e6d67"}, {"src": "images/articles/p06-5.webp", "c": "#828080"}]}, {"no": "06", "title": "해로 아는 시간", "date": "2026년 11월", "verb": "돌리다", "issue": "02", "column": "지금 몇 시야?", "dek": "해시계 · Sundial", "rel": [{"src": "images/articles/t01-1.webp", "c": "#70645b"}, {"src": "images/articles/t01-2.webp", "c": "#a97d68"}, {"src": "images/articles/t01-3.webp", "c": "#857765"}, {"src": "images/articles/t01-4.webp", "c": "#756d65"}, {"src": "images/articles/t01-5.webp", "c": "#8a8987"}]}, {"no": "07", "title": "시계의 왕관", "date": "2026년 11월", "verb": "돌리다", "issue": "02", "column": "지금 몇 시야?", "dek": "스마트워치 · Digital Crown", "rel": [{"src": "images/articles/t02-1.webp", "c": "#8e6348"}, {"src": "images/articles/t02-2.webp", "c": "#453534"}, {"src": "images/articles/t02-3.webp", "c": "#645e50"}, {"src": "images/articles/t02-4.webp", "c": "#9f9393"}, {"src": "images/articles/t02-5.webp", "c": "#736975"}]}, {"no": "08", "title": "냉수와 온수", "date": "2026년 11월", "verb": "돌리다", "issue": "02", "column": "약불로 오래", "dek": "수전 · Faucet", "rel": [{"src": "images/articles/t03-1.webp", "c": "#686458"}, {"src": "images/articles/t03-2.webp", "c": "#6c6052"}, {"src": "images/articles/t03-3.webp", "c": "#83817e"}, {"src": "images/articles/t03-4.webp", "c": "#b6aea5"}]}, {"no": "09", "title": "이것 좀 열어줘", "date": "2026년 11월", "verb": "돌리다", "issue": "02", "column": "약불로 오래", "dek": "용기 · Twist-off Cap", "rel": [{"src": "images/articles/t04-1.webp", "c": "#6b5956"}, {"src": "images/articles/t04-2.webp", "c": "#909090"}, {"src": "images/articles/t04-3.webp", "c": "#a48c67"}, {"src": "images/articles/t04-4.webp", "c": "#9a999a"}, {"src": "images/articles/t04-5.webp", "c": "#939292"}]}, {"no": "10", "title": "3×3×3", "date": "2026년 11월", "verb": "돌리다", "issue": "02", "column": "한 판만 더", "dek": "퍼즐 · Twisty Puzzle", "rel": [{"src": "images/articles/t05-1.webp", "c": "#27160d"}, {"src": "images/articles/t05-3.webp", "c": "#a0674f"}, {"src": "images/articles/t05-9.webp", "c": "#97817c"}]}, {"no": "11", "title": "뭐가 나올까", "date": "2026년 11월", "verb": "돌리다", "issue": "02", "column": "한 판만 더", "dek": "자판기 · Capsule Toy Machine", "rel": [{"src": "images/articles/t06-1.webp", "c": "#5b533e"}, {"src": "images/articles/t06-2.webp", "c": "#b1a5a1"}, {"src": "images/articles/t06-3.webp", "c": "#64615c"}, {"src": "images/articles/t06-4.webp", "c": "#7b7a7a"}, {"src": "images/articles/t06-5.webp", "c": "#626161"}]}];
 const homeUrl = () => { try { return sessionStorage.getItem('haebwaya-home') || 'index.html'; } catch (e) { return 'index.html'; } };
 
 /* 맨 윗줄 박스 (자리 고정, 색은 불러올 때마다 랜덤):
@@ -367,13 +369,13 @@ function slotFor(a) {
   }
   return SLOT[a.no];
 }
-const DIRS = ['d-r'];   // 10/18: 사진은 늘 왼쪽 → 오른쪽으로 드러남 (단색이 오른쪽으로 걷힘)
+const DIRS = ['d-r', 'd-l', 'd-d', 'd-u'];   // 10/22: 다시 네 방향 랜덤 (단색이 오른쪽·왼쪽·아래·위 중 한쪽으로 걷힘)
 const setDir = el => { el.classList.remove(...DIRS); el.classList.add(DIRS[rand(DIRS.length)]); };
 const state = { q: '', newest: false };
 function matches(a, q) {
   if (!q) return true;
-  const rel = a.rel.flatMap(id => { const d = ITEM_DATA[id]; return d ? [id, d.name, ...d.verbs, d.field] : [id]; });
-  return [a.no, a.title, a.verb || '', a.date, ...rel].some(x => String(x).toLowerCase().includes(q));
+  const rel = a.rel.flatMap(id => { if (typeof id !== 'string') return []; const d = ITEM_DATA[id]; return d ? [id, d.name, ...d.verbs, d.field] : [id]; });
+  return [a.no, a.title, a.verb || '', a.date, a.column || '', a.dek || '', a.issue ? a.issue + '호' : '', ...rel].some(x => String(x).toLowerCase().includes(q));
 }
 function listNow() {
   const l = TOC.filter(a => matches(a, state.q));
@@ -414,8 +416,9 @@ function makeRows(list) {
       const el = document.createElement('a');
       el.className = 'item toc-cell';
       el.href = `article.html?a=${a.no}`;                               // 관련 사진을 눌러도 그 글로
-      el._data = { code: id, src: CONFIG.path(id) };
-      el.style.setProperty('--solid', (window.IMAGE_COLORS || {})[id] || '#2a2622');
+      const own = typeof id !== 'string';                              // 글에 실린 사진 {src, c} / 시트 사진 id
+      el._data = { code: own ? id.src : id, src: own ? id.src : CONFIG.path(id) };
+      el.style.setProperty('--solid', (own ? id.c : (window.IMAGE_COLORS || {})[id]) || '#2a2622');
       setDir(el);
       setPos(el, { r, c });
       cells.push(el);
@@ -454,6 +457,39 @@ function render(animate) {
   setTimeout(put, Math.min(500, outs.length * 18 + 420));
 }
 
+let tails = [], anims = [];   // 10/22: 단색 꼬리용 (목차에서 글로 넘어갈 때 당겨지는 사진)
+/* 단색 꼬리 (10/22, 영상 레퍼런스): 출발 자리(a)와 도착 자리(b)를 합친 띠를 그 사진의 평균색으로 깔고,
+   바깥 상자는 앞쪽 끝을, 안쪽 상자는 뒤쪽 끝을 잘라 냄 → 앞쪽 끝은 사진과 함께 먼저, 뒤쪽 끝은 늦게 출발해 따라옴.
+   꼬리는 사진들 아래 층(빈 칸 위)이라 사진 사이 틈에서만 보임 */
+const TAIL = { front: .643, back: .214 };                       // 0.7초 기준: 앞쪽 끝 0~0.45초, 뒤쪽 끝 0.15~0.7초
+function makeTail(el, a, b, delay, dur, ease) {
+  const g = grid.getBoundingClientRect();
+  const L = Math.min(a.left, b.left), T = Math.min(a.top, b.top), R = Math.max(a.right, b.right), B = Math.max(a.bottom, b.bottom);
+  const W = R - L, H = B - T;
+  const t = document.createElement('div'); t.className = 'tail';
+  t.style.cssText = `left:${L - g.left}px; top:${T - g.top}px; width:${W}px; height:${H}px; --solid:${getComputedStyle(el).getPropertyValue('--solid')}`;
+  const inner = document.createElement('i'); t.appendChild(inner);
+  grid.appendChild(t); tails.push(t);
+  /* 자리별 잘라 낼 양: 상자 안에서 a·b가 차지하지 않는 쪽 */
+  const cut = r => [r.top - T, R - r.right, B - r.bottom, r.left - L];   // inset(위 오른 아래 왼)
+  const ca = cut(a), cb = cut(b);
+  const lead = [0, 0, 0, 0], trail = [0, 0, 0, 0];                // 앞쪽(움직이는 방향) / 뒤쪽 면
+  const dy = b.top - a.top, dx = b.left - a.left;
+  if (Math.abs(dy) >= Math.abs(dx)) { if (dy > 0) { lead[2] = 1; trail[0] = 1; } else { lead[0] = 1; trail[2] = 1; } }
+  else { if (dx > 0) { lead[1] = 1; trail[3] = 1; } else { lead[3] = 1; trail[1] = 1; } }
+  const ins = v => `inset(${v.map(n => Math.max(0, n) + 'px').join(' ')})`;
+  /* 바깥: 앞쪽 면만 a → b (나머지 면은 a·b 공통이라 0) / 안쪽: 뒤쪽 면만 a → b */
+  const outerFrom = lead.map((k, i) => k ? ca[i] : 0), outerTo = lead.map((k, i) => k ? cb[i] : 0);
+  const innerFrom = trail.map((k, i) => k ? ca[i] : 0), innerTo = trail.map((k, i) => k ? cb[i] : 0);
+  const side = [0, 1, 2, 3].filter(i => !lead[i] && !trail[i]);    // 움직임과 수직인 면: 폭 차이만큼 (보통 0)
+  side.forEach(i => { outerFrom[i] = Math.max(ca[i], cb[i]); outerTo[i] = outerFrom[i]; });
+  const fd = dur * TAIL.front, bd = dur * TAIL.back;
+  anims.push(t.animate([{ clipPath: ins(outerFrom) }, { clipPath: ins(outerTo) }], { duration: fd, delay, easing: ease, fill: 'both' }));
+  const ia = inner.animate([{ clipPath: ins(innerFrom) }, { clipPath: ins(innerTo) }], { duration: dur - bd, delay: delay + bd, easing: ease, fill: 'both' });
+  anims.push(ia);
+  ia.onfinish = () => t.remove();
+  return fd;                                                      // 사진(앞쪽 끝)이 이동하는 시간
+}
 /* ═════════ 로딩 (2026-10-17): 메인과 같음 — 멈춰 있을 때만 사진을 불러와 스르륵 (레이지 로드) ═════════ */
 const inView = el => { const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < innerHeight; };
 const byPos = (a, b) => { const A = a.getBoundingClientRect(), B = b.getBoundingClientRect(); return (A.top - B.top) || (A.left - B.left); };
@@ -721,6 +757,21 @@ const SHEET = {
 };
 const ITEM_DATA = {};   // id → { name, verbs: [], field, principle }
 const sheetUrl = q => `https://docs.google.com/spreadsheets/d/${SHEET.id}/gviz/tq?tqx=out:csv&${q}`;
+/* 11/7: 인터넷이 되면 구글 시트에서, 안 되면(4초 안에 못 받거나 오프라인) images/sheet_data.js에 저장해 둔 데이터로 */
+async function sheetText(q) {
+  if (navigator.onLine !== false && !sheetText.offline) {
+    try {
+      const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 4000);
+      const res = await fetch(sheetUrl(q), { signal: ctl.signal });
+      clearTimeout(t);
+      if (res.ok) { const tx = await res.text(); if (!/<html/i.test(tx.slice(0, 500))) return tx; }
+    } catch (_) {}
+    sheetText.offline = true;                                   // 한 번 실패하면 이번 방문 동안은 파일 데이터로
+  }
+  const local = (window.SHEET_LOCAL || {})[q];
+  if (local != null) { if (!sheetText.told) { console.info('시트 대신 파일 데이터 사용 (저장한 날:', window.SHEET_LOCAL_DATE || '?', ')'); sheetText.told = 1; } return local; }
+  throw new Error('시트도 파일 데이터도 없음: ' + q);
+}
 function parseCSV(text) {
   const rows = []; let row = [], cur = '', q = false;
   for (let i = 0; i < text.length; i++) {
@@ -740,10 +791,10 @@ function parseCSV(text) {
 }
 async function loadSheet() {
   try {
-    const index = parseCSV(await (await fetch(sheetUrl(`gid=${SHEET.indexGid}`))).text());
+    const index = parseCSV(await sheetText(`gid=${SHEET.indexGid}`));
     await Promise.all(index.map(async f => {
       if (!f.sheet) return;
-      const rows = parseCSV(await (await fetch(sheetUrl(`sheet=${encodeURIComponent(f.sheet)}`))).text());
+      const rows = parseCSV(await sheetText(`sheet=${encodeURIComponent(f.sheet)}`));
       rows.forEach(r => {
         if (!r.id) return;
         ITEM_DATA[r.id] = { name: r.name, verbs: r.verbs ? r.verbs.split(',').map(v => v.trim()).filter(Boolean) : [], field: f.field, principle: r.principle };
@@ -763,15 +814,16 @@ async function loadSheet() {
   grid.addEventListener('click', e => {
     const a = e.target.closest('a.toc-cell');
     if (!a || e.metaKey || e.ctrlKey || e.shiftKey) return;
-    e.preventDefault();
+    e.preventDefault(); e.stopPropagation();
     if (grid.dataset.leaving) return; grid.dataset.leaving = 1;
     holdReveal = true;
     const row = a.style.gridRow.split('/')[0].trim();
     const cells = [...grid.querySelectorAll('.toc-cell')];
     const mine = cells.filter(c => c.style.gridRow.split('/')[0].trim() === row);
-    cells.filter(c => !mine.includes(c) && inView(c)).sort(byPos).forEach((c, i) => setTimeout(() => { setDir(c); c.classList.add('gone'); }, i * 18));
-    mine.filter(c => c.classList.contains('item')).forEach((c, i) => setTimeout(() => c.classList.remove('done'), 120 + i * 50));
-    setTimeout(() => { location.href = a.href; }, 900);
+    cells.filter(c => !mine.includes(c) && inView(c)).sort(byPos).forEach((c, i) => setTimeout(() => { setDir(c); c.classList.add('gone'); }, i * 18));   // 다른 줄은 스르륵 사라짐 (원래대로)
+    /* 11/7: 이 줄 사진들은 옆 제목 박스 밑으로 접혀 들어감 (제목 박스는 그대로). 이동은 원래처럼 0.9초 뒤 */
+    const title = mine.find(c => !c.classList.contains('item')) || a;
+    window.gatherInto(title, a.href, { only: mine.filter(c => c !== title), wait: 900 });
   });
   addEventListener('pageshow', e => { if (e.persisted) location.reload(); });   // 뒤로 가기로 돌아오면 다시 그림
   loadSheet();                                                    // 시트는 검색(사진 이름·동사)에만 씀
@@ -806,6 +858,146 @@ async function loadSheet() {
   const reset = () => { clearTimeout(t); t = setTimeout(goHome, IDLE); };
   ['pointermove', 'pointerdown', 'wheel', 'scroll', 'keydown', 'touchstart'].forEach(ev => addEventListener(ev, reset, { passive: true }));
   reset();
+})();
+</script>
+<script>
+/* ═════════ 박스로 다른 페이지에 갈 때 (10/22) ═════════
+   - 박스가 가까운 화면 가장자리 쪽으로 접힘 (왼쪽 절반에 있으면 왼쪽으로, 오른쪽 절반이면 오른쪽으로)
+   - 글자는 크기 그대로, 접히는 쪽 끝으로 몰리며 함께 잘려 나감
+   - 같은 줄에서 접히는 반대편에 있던 박스·사진들이 비는 자리로 당겨져 옴 (가까운 것부터, 사진은 단색 꼬리)
+   - 다 접히면 이동. 뒤로가기로 돌아오면 원래대로 */
+(() => {
+  const LEAVE = { dur: 450, step: 22, ease: 'cubic-bezier(.4, 0, .2, 1)' };
+  const cell = () => innerWidth / 12;
+  function leaveFold(box, href, wait = 0) {   // wait: 이동까지 최소 시간 (다른 퇴장 모션과 함께 쓸 때)
+    if (box._leaving) return;
+    box._leaving = true;
+    const B = box.getBoundingClientRect(), W = B.width, toLeft = B.left + W / 2 < innerWidth / 2;
+    box.style.overflow = 'hidden';
+    box.animate(toLeft
+      ? [{ width: W + 'px' }, { width: '0px' }]                                            // 오른쪽 변이 왼쪽으로
+      : [{ width: W + 'px', transform: 'none' }, { width: '0px', transform: `translateX(${W}px)` }],   // 왼쪽 변이 오른쪽으로
+      { duration: LEAVE.dur, easing: LEAVE.ease, fill: 'forwards' });
+    const hasHeat = typeof heat !== 'undefined' && heat && typeof heat.track === 'function';
+    if (hasHeat) heat.track(box, LEAVE.dur + 50, true, true);
+    let last = 0;
+    [...box.parentElement.children].forEach(e => {
+      if (e === box || e.classList.contains('hole') || e.classList.contains('tail')) return;
+      const cs = getComputedStyle(e); if (cs.position === 'fixed' || cs.display === 'none') return;
+      const r = e.getBoundingClientRect();
+      if (!r.width || r.bottom < 0 || r.top > innerHeight) return;
+      if (r.top >= B.bottom - 1 || r.bottom <= B.top + 1) return;         // 같은 줄(세로로 겹치는 것)만
+      if (toLeft ? r.left < B.right - 1 : r.right > B.left + 1) return;    // 접히는 반대편만
+      const dx = toLeft ? -W : W, gap = toLeft ? r.left - B.right : B.left - r.right;
+      const delay = Math.round(gap / cell()) * LEAVE.step;
+      let move = LEAVE.dur;
+      if (e.classList.contains('item') && typeof makeTail === 'function') {   // 사진: 사진 밀림과 같은 단색 꼬리
+        const to = { left: r.left + dx, right: r.right + dx, top: r.top, bottom: r.bottom, width: r.width, height: r.height };
+        try { move = makeTail(e, r, to, delay, LEAVE.dur, LEAVE.ease); } catch (_) {}
+      }
+      e.animate([{ transform: 'none' }, { transform: `translateX(${dx}px)` }], { duration: move, delay, easing: LEAVE.ease, fill: 'forwards' });
+      if (hasHeat) heat.track(e, delay + LEAVE.dur + 50);
+      last = Math.max(last, delay);
+    });
+    setTimeout(() => { location.href = href; }, Math.max(wait, Math.max(LEAVE.dur, last + LEAVE.dur * .6) + 40));
+  }
+  /* 11/7: 박스를 누르면 누른 박스는 그대로 두고, 화면에 보이는 다른 박스·사진이 그 박스 쪽으로 접히며 밑으로 들어감
+     (같은 줄은 가로로, 같은 열은 세로로, 대각선은 더 먼 쪽 축으로. 가까운 것부터 차례로). 아티클 목차의 글 줄은 위 leaveFold 그대로 */
+  function gatherInto(box, href, opt = {}) {
+    if (box._leaving) return;
+    box._leaving = true;
+    const B = box.getBoundingClientRect(), c = cell(), MAX = opt.max || 3;
+    if (getComputedStyle(box).position === 'static') box.style.position = 'relative';
+    box._z = box.style.zIndex; box.style.zIndex = 40;
+    const hasHeat = typeof heat !== 'undefined' && heat && typeof heat.track === 'function';
+    /* 11/7: 위·아래·왼쪽·오른쪽 각각 바로 붙은 쪽으로 많아야 2~3개만 (같은 줄/같은 열, 4칸 안). 대각선·먼 것은 그대로 */
+    const side = { l: [], r: [], u: [], d: [] };
+    (opt.only || document.querySelectorAll('.box, .item')).forEach(e => {
+      if (e === box || e.contains(box) || box.contains(e) || e.closest('#menu, .dock')) return;
+      const cs = getComputedStyle(e); if (cs.position === 'fixed' || cs.display === 'none' || cs.visibility === 'hidden') return;
+      const r = e.getBoundingClientRect();
+      if (!r.width || !r.height || r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) return;
+      const row = r.top < B.bottom - 1 && r.bottom > B.top + 1, col = r.left < B.right - 1 && r.right > B.left + 1;
+      if (row && r.left >= B.right - 1) side.r.push({ e, r, gap: r.left - B.right });
+      else if (row && r.right <= B.left + 1) side.l.push({ e, r, gap: B.left - r.right });
+      else if (col && r.top >= B.bottom - 1) side.d.push({ e, r, gap: r.top - B.bottom });
+      else if (col && r.bottom <= B.top + 1) side.u.push({ e, r, gap: B.top - r.bottom });
+    });
+    let last = 0;
+    Object.entries(side).forEach(([k, list]) => {
+      list.sort((a, b) => a.gap - b.gap).filter(x => opt.only || x.gap < c * 4).slice(0, opt.only ? Infinity : MAX).forEach(({ e, r, gap }) => {
+        const to = k === 'r' ? { transform: `translateX(${B.right - r.left}px)`, clipPath: 'inset(0 100% 0 0)' }
+                 : k === 'l' ? { transform: `translateX(${B.left - r.right}px)`, clipPath: 'inset(0 0 0 100%)' }
+                 : k === 'd' ? { transform: `translateY(${B.bottom - r.top}px)`, clipPath: 'inset(0 0 100% 0)' }
+                 :             { transform: `translateY(${B.top - r.bottom}px)`, clipPath: 'inset(100% 0 0 0)' };
+        const delay = Math.round(gap / c) * LEAVE.step;
+        e.animate([{ transform: 'none', clipPath: 'inset(0 0 0 0)' }, to], { duration: LEAVE.dur, delay, easing: LEAVE.ease, fill: 'forwards' });
+        if (hasHeat) heat.track(e, delay + LEAVE.dur + 50);
+        last = Math.max(last, delay);
+      });
+    });
+    setTimeout(() => { location.href = href; }, Math.max(opt.wait || 0, last + LEAVE.dur + 60));
+  }
+  window.gatherInto = gatherInto;
+  window.leaveFold = leaveFold;                                              // 아티클 목차의 글 줄에서도 씀
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a.box[href]');
+    if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target === '_blank') return;
+    const href = a.getAttribute('href'); if (!href || href.startsWith('#')) return;
+    /* 11/7: 일반 박스는 아무것도 접히지 않고 바로 이동 (아티클 목차 줄·메뉴만 따로 움직임) */
+  });
+  /* 메뉴 (11/7): 누른 칸이 맨 위 칸 자리로 올라오고, 나머지 칸은 내려왔던 길 그대로 위로 접혀 올라간 뒤 이동 */
+  document.addEventListener('click', e => {
+    const a = e.target.closest('#menu a[href]');
+    if (!a || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault(); e.stopPropagation();
+    if (a._leaving) return; a._leaving = true;
+    const m = document.getElementById('menu'), f = document.getElementById('fab');
+    const i = m ? [...m.children].indexOf(a) : 0, n = m ? m.children.length : 3;
+    a.style.zIndex = 20;
+    a.style.transform = `translateY(${-100 * i}%)`;                         // 맨 위 칸 자리로
+    if (m) m.classList.remove('on'); if (f) f.classList.remove('open');
+    setTimeout(() => { location.href = a.href; }, 700 + n * 40 + 60);
+  }, true);
+  addEventListener('pageshow', e => {                                         // 뒤로가기로 돌아왔을 때 접힌 채로 남지 않게
+    if (!e.persisted) return;
+    document.getAnimations().forEach(x => x.cancel());
+    document.querySelectorAll('.tail').forEach(t => t.remove());
+    document.querySelectorAll('a.box').forEach(b => { b._leaving = false; b.style.overflow = ''; if ('_z' in b) { b.style.zIndex = b._z; delete b._z; } });
+    const m = document.getElementById('menu'), f = document.getElementById('fab');
+    if (m) { m.classList.remove('on'); m.querySelectorAll('a').forEach(x => { x._leaving = false; x.style.visibility = ''; x.style.transform = ''; x.style.zIndex = ''; if (x._clone) { x._clone.remove(); x._clone = null; } }); } if (f) f.classList.remove('open');
+  });
+})();
+</script>
+<script>
+/* ═════════ 박스로 이동 (11/7): 누른 박스 안만 비슷한 색 단색 면이 네 방향 중 하나에서 덮은 뒤 이동. 다른 박스·사진은 건드리지 않음 ═════════ */
+(() => {
+  const DUR = 380, EASE = 'cubic-bezier(.4, 0, .2, 1)';
+  function cover(box, color) {
+    const c = document.createElement('i');
+    c.className = 'sweep';
+    c.style.cssText = `position:absolute; inset:0; z-index:5; pointer-events:none; background:${color}`;
+    if (getComputedStyle(box).position === 'static') box.style.position = 'relative';
+    box.style.overflow = 'hidden';
+    box.appendChild(c);
+    return c;
+  }
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a.box[href]');
+    if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || a.target === '_blank') return;
+    const href = a.getAttribute('href'); if (!href || href.startsWith('#')) return;
+    e.preventDefault();
+    if (a._leaving) return; a._leaving = true;
+    const c = cover(a, 'color-mix(in srgb, var(--bg) 45%, var(--fg))');   // 박스 색과 글자 색 사이 단색
+    const from = ['inset(0 100% 0 0)', 'inset(0 0 0 100%)', 'inset(0 0 100% 0)', 'inset(100% 0 0 0)'][Math.floor(Math.random() * 4)];   // 왼쪽·오른쪽·위·아래 중 하나에서 덮음
+    c.animate([{ clipPath: from }, { clipPath: 'inset(0 0 0 0)' }], { duration: DUR, easing: EASE, fill: 'forwards' });
+    setTimeout(() => { location.href = a.href; }, DUR + 40);
+  });
+  addEventListener('pageshow', e => {
+    if (!e.persisted) return;
+    document.querySelectorAll('.sweep').forEach(s => s.remove());
+    document.querySelectorAll('a.box').forEach(b => { b._leaving = false; });
+  });
 })();
 </script>
 </body>
