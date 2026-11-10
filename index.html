@@ -223,6 +223,13 @@
     .grid { padding-bottom: env(safe-area-inset-bottom); }
     .item:active::before { filter: brightness(1.15); }                    /* 누르는 순간 살짝 밝게 */
     .info { overflow: hidden; }
+    /* 11/11: 사진 로딩 — 폰에서는 단색 판이 한쪽으로 미끄러져 나가며 사진이 드러남 (clip-path 대신 transform → 사파리에서도 확실히 움직임) */
+    .item { overflow: hidden; }
+    .item::after { clip-path: none !important; transition: transform var(--reveal, .6s) var(--ease); }
+    .item.done.d-r::after { transform: translateX(100%); }
+    .item.done.d-l::after { transform: translateX(-100%); }
+    .item.done.d-d::after { transform: translateY(100%); }
+    .item.done.d-u::after { transform: translateY(-100%); }
     .info .desc { display: none; }                                     /* 설명 창이 2×1이라 이름·동사·분야만 */
     .info .name { margin-top: 6px; }
     .overview { padding: var(--gut) var(--gut) 0; }
@@ -307,9 +314,10 @@ const MQ = matchMedia('(max-width: 700px)');
 const MOBILE = MQ.matches, COLS = MOBILE ? 3 : 12;
 MQ.addEventListener && MQ.addEventListener('change', () => location.reload());
 if (MOBILE) Object.assign(CONFIG, {
-  haloImage: [0.6, 0.85],    // 박스 아래 줄은 거의 사진으로 (빈 칸은 가끔)
-  holeRatio: [0.08, 0.1],    // 빈 칸은 가끔
-  blockSizes: [{ w: 2, h: 1, p: 5 }, { w: 1, h: 2, p: 3 }, { w: 2, h: 2, p: 3 }, { w: 3, h: 1, p: 1.5 }],   // 3×2·3×3은 가로 한 줄을 통째로 비워서 뺌
+  haloImage: [0.6, 0.85],    // 박스 둘레는 거의 사진으로
+  holeRatio: [0.2, 0.24],    // 11/11: 구멍을 넉넉히
+  blockSizes: [{ w: 1, h: 1, p: 4 }, { w: 2, h: 1, p: 4 }, { w: 1, h: 2, p: 3 }, { w: 2, h: 2, p: 2 }],   // 11/11: 한 칸짜리·2×2 구멍도 (3칸짜리는 가로 한 줄을 통째로 비워서 뺌)
+  heatCool: 0.993,           // 11/11: 폰에서는 잔상이 더 오래 남음 (PC 0.985)
 });
 
 const ARROW_OUT = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M1 8h13M9 3l5 5-5 5"/></svg>';   // 이동 (같은 탭)
@@ -517,7 +525,7 @@ function placeBlocks(base, boxes) {
     let left = target - halo.size, fails = 0;
     while (left > 0 && fails < 4000) {
       /* 남은 넓이를 덩어리(2·4·6·9칸)만으로 딱 채울 수 있는지: 1·3·5·7칸은 불가능 */
-      const ok = n => n === 0 || (n >= 2 && (MOBILE || ![3, 5, 7].includes(n)));   // 모바일은 3칸 덩어리(3×1)가 있어서 2 이상이면 다 채울 수 있음
+      const ok = n => MOBILE || n === 0 || (n >= 2 && ![3, 5, 7].includes(n));   // 모바일은 한 칸짜리 구멍이 있어서 어떤 넓이든 채울 수 있음
       if (!ok(left)) { rows++; left += COLS; continue; }        // 못 채우는 넓이면 줄을 하나 늘려서 맞춤
       const fit = CONFIG.blockSizes.filter(z => z.w * z.h <= left && ok(left - z.w * z.h));
       if (!fit.length) { rows++; left += COLS; continue; }
@@ -1148,7 +1156,7 @@ const heat = (() => {
     /* 모바일 (11/10): 손가락을 대고 가만히 있으면 그 자리가 점점 뜨거워지고 넓어짐 (손자국처럼) */
     if (touch.on) {
       touch.hold++;
-      if (touch.hold > 12) add(touch.x, touch.y, 0, 0, Math.min(0.05, touch.hold * 0.0006), 22 + Math.min(touch.hold, 150) * 0.2);
+      if (touch.hold > 30) add(touch.x, touch.y, 0, 0, Math.min(0.035, (touch.hold - 30) * 0.0003), 22 + Math.min(touch.hold, 180) * 0.2);   // 11/11: 더 늦게, 천천히 달아오름
     }
     /* 밀려나는 아이템: 지금 있는 자리 전체에 열 → 빈 칸을 지나가면 그 자리에 자국 */
     const now = performance.now();
@@ -1221,7 +1229,7 @@ const heat = (() => {
     const t = e.touches[0]; if (!t) return;
     Object.assign(touch, { on: true, x: t.clientX, y: t.clientY, hold: 0 });
     mouse.x = t.clientX; mouse.y = t.clientY; mouse.has = true;
-    mouse.trail.push({ x: t.clientX, y: t.clientY, k: 0.25 });
+    { const x = t.clientX, y = t.clientY; for (let i = 0; i < 24; i++) setTimeout(() => { mouse.trail.push({ x, y, k: 0.012 }); wake(); }, i * 30); }   // 11/11: 누른 자리가 천천히(0.7초) 달아오름
     wake();
   }, { passive: true });
   addEventListener('touchmove', e => {

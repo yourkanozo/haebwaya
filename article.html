@@ -186,10 +186,16 @@
     .flow > figure.w4 img { width: 72%; margin: 0 auto; }                  /* 작은 사진(4칸)은 화면의 3/4 정도로 */
     figcaption { font-size: 13px; line-height: 1.5; text-align: left; margin-top: 8px; padding: 0 var(--pad); }
     .soon { padding: 60px 0; }
-    .pager { display: grid; grid-column: 1 / -1; grid-row: 5; grid-template-columns: 1fr 1fr; align-self: end; margin-top: 64px; }
-    .pager .box { position: relative; width: auto; height: calc(var(--cell) * .75); z-index: 1; }
-    .pager .box .t { font-size: 14px; }
-    .to-top { bottom: calc(var(--cell) * .75 + 16px + env(safe-area-inset-bottom)); }
+    /* 이전 글 / 다음 글 (11/11, 웹툰 앱처럼): 화면을 누르면 아래에서 잠깐 올라오고, 3초 동안 안 누르면 다시 내려감 */
+    .flow { padding-bottom: 96px; }
+    .pager { display: grid; position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; grid-template-columns: 1fr 1fr;
+             transform: translateY(100%); transition: transform .35s var(--ease); }
+    body.pg .pager { transform: none; }
+    .pager .box { position: relative; width: auto; height: calc(56px + env(safe-area-inset-bottom)); left: auto !important; right: auto !important; }
+    .pager .box .t { font-size: 14px; top: 12px; }
+    .pager .box .s { bottom: calc(12px + env(safe-area-inset-bottom)); }
+    .to-top { transition: clip-path .5s var(--ease), bottom .35s var(--ease); }
+    body.pg .to-top { bottom: calc(56px + 16px + env(safe-area-inset-bottom)); }
   }
 </style>
 </head>
@@ -411,7 +417,7 @@ const heat = (() => {
       const k = j * fw + i;
       const l = i > 0 ? T[k - 1] : T[k], r = i < fw - 1 ? T[k + 1] : T[k];
       const u = j > 0 ? T[k - fw] : T[k], d = j < fh - 1 ? T[k + fw] : T[k];
-      B[k] = (T[k] * 0.6 + (l + r + u + d) * 0.1) * 0.988;   // 식는 속도 (10/14: 0.986 → 0.975 → 10/17: 0.988 잔열이 오래 남게)
+      B[k] = (T[k] * 0.6 + (l + r + u + d) * 0.1) * (MOBILE ? 0.994 : 0.988);   // 11/11 폰은 더 오래 · 식는 속도 (10/14: 0.986 → 0.975 → 10/17: 0.988 잔열이 오래 남게)
       if (B[k] > max) max = B[k];
     }
     [T, B] = [B, T];
@@ -445,7 +451,7 @@ const heat = (() => {
   }, { passive: true });
   document.addEventListener('pointerleave', () => { mouse.has = false; });
   /* 11/10 터치: 손가락이 지나간 길에 열 + 닿는 순간 작은 열 (마우스와 같은 방식) */
-  addEventListener('touchstart', e => { const t = e.touches[0]; if (!t) return; mouse.x = t.clientX; mouse.y = t.clientY; mouse.has = true; mouse.trail.push({ x: t.clientX, y: t.clientY, k: 0.25 }); wake(); }, { passive: true });
+  addEventListener('touchstart', e => { const t = e.touches[0]; if (!t) return; mouse.x = t.clientX; mouse.y = t.clientY; mouse.has = true; const x = t.clientX, y = t.clientY; for (let i = 0; i < 24; i++) setTimeout(() => { mouse.trail.push({ x, y, k: 0.012 }); wake(); }, i * 30); }, { passive: true });   // 11/11: 누른 자리가 천천히(0.7초) 달아오름
   addEventListener('touchmove', e => {
     const t = e.touches[0]; if (!t) return;
     const x = t.clientX, y = t.clientY, dx = x - mouse.x, dy = y - mouse.y, dist = Math.hypot(dx, dy);
@@ -488,6 +494,15 @@ function onScroll() {
 }
 addEventListener('scroll', onScroll, { passive: true });
 onScroll();
+/* 모바일 (11/11): 화면을 누르면 이전·다음 글 칸이 잠깐 나옴, 3초 동안 안 누르면 들어감 */
+if (MOBILE) {
+  let pgT;
+  addEventListener('pointerdown', e => {
+    if (e.target.closest('.pager')) return;
+    document.body.classList.add('pg'); clearTimeout(pgT);
+    pgT = setTimeout(() => document.body.classList.remove('pg'), 3000);
+  }, { passive: true });
+}
 /* ═════════ 맨 위로 ↑ (모든 페이지 공통) ═════════ */
 (() => {
   const up = document.getElementById('toTop');
