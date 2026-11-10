@@ -198,7 +198,56 @@
   /* 11/8: EASTARJET Heavy (이스타항공·윤디자인, 산돌구름 무료 서체 — 받은 파일 그대로) — 프로젝트 이름 '폼을 보아하니'에만. 나머지는 나눔스퀘어 라이트 */
   @font-face { font-family: "EASTARJET"; src: url("fonts/EASTARJET-Heavy.otf") format("opentype"); font-weight: 900; font-display: swap; }
   .box-name .t, .b-name .t { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 900; }
-  .box-name .t { font-size: var(--fs-xl); }   /* 11/8: 메인의 프로젝트 이름만 한 단계 크게 (25 → 40). 개요가 열려 2칸으로 좁아져도 한 줄에 들어감 */
+  .box-name .t { font-size: var(--fs-xl); }
+  /* 11/10: '탐색'·'아티클' 박스 이름도 제목 서체로, 한 단계 가벼운 Medium */
+  @font-face { font-family: "EASTARJET"; src: url("fonts/EASTARJET-Medium.otf") format("opentype"); font-weight: 500; font-display: swap; }
+  .box-explore .t, .box-article .t { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 500; }   /* 11/8: 메인의 프로젝트 이름만 한 단계 크게 (25 → 40). 개요가 열려 2칸으로 좁아져도 한 줄에 들어감 */
+
+  /* ═════════ 모바일 (11/10): 화면 폭 700px 이하 → 가로 3칸 (아이폰 앨범처럼) ═════════
+     - 그리드에는 '폼을 보아하니'만. 아티클·탐색·전체는 화면 아래 메뉴(.mnav)로
+     - 사진을 누르면 화면 폭 전체(3×3)로 커지고 아래에 설명 3×2 / 개요는 이름 박스 아래 3×3
+     - 아래 메뉴: 스크롤을 내리면 얇아지고, 올리면 다시 커짐. 누르면 그 칸이 화면 전체로 커지며 이동 */
+  .mnav, .mzoom { display: none; }
+  @media (max-width: 700px) {
+    :root { --cols: 3; --u: calc(100vw / 540); --gut: 14px; --fs-l: 20px; --fs-xl: 28px; --fs-s: 14px; --lh-s: 21px;
+            --nav-full: calc(100vw / 3 * .6); --nav-min: 44px; --nav-h: var(--nav-full); }
+    body.nav-min { --nav-h: var(--nav-min); }
+    .fab, .menu a, .menu button { width: var(--cell) !important; height: 44px !important; padding: 0 var(--gut) !important; font-size: 14px; }
+    .fab svg { width: 18px !important; height: 18px !important; }
+    .dock { filter: none !important; }                                     /* 숨어 있는 햄버거의 그림자가 화면 오른쪽 끝에 비치지 않게 */
+    .dock:has(.fab.show) { filter: drop-shadow(0 2px 6px rgba(0,0,0,.28)) !important; }   /* 11/10: 그림자는 메뉴 전체에 하나만 (칸마다 따로 지지 않게). 숨어 있을 땐 없음 */
+    .menu svg { width: 10px; height: 10px; }
+    .box .t { white-space: normal; word-break: keep-all; right: var(--gut); }
+    .box .s { white-space: normal; word-break: keep-all; flex-wrap: wrap; justify-content: flex-end; text-align: right; left: var(--gut); line-height: 1.35; }
+    .box svg { width: 10px; height: 10px; }
+    .grid { padding-bottom: env(safe-area-inset-bottom); }
+    .item:active::before { filter: brightness(1.15); }                    /* 누르는 순간 살짝 밝게 */
+    .info { overflow: hidden; }
+    .info .desc { display: none; }                                     /* 설명 창이 2×1이라 이름·동사·분야만 */
+    .info .name { margin-top: 6px; }
+    .overview { padding: var(--gut) var(--gut) 0; }
+    .ov-text { padding-bottom: var(--gut); }
+    .to-top { width: 44px; height: 44px; bottom: calc(16px + env(safe-area-inset-bottom));
+              transition: clip-path .5s var(--ease), bottom .32s var(--ease); }
+    .to-top svg { width: 18px; height: 18px; }
+    .mnav { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; filter: drop-shadow(0 -2px 8px rgba(0,0,0,.3)); }
+    .mnav > * { flex: 1; position: relative; display: block; overflow: hidden; background: var(--bg); color: var(--fg);
+                height: calc(var(--nav-h) + env(safe-area-inset-bottom)); transform: translateY(110%);
+                transition: height .32s var(--ease), transform .5s cubic-bezier(.2, .8, .2, 1) var(--d, 0s);
+                -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; cursor: pointer; }
+    .mnav.on > * { transform: none; }
+    .mnav .mi { position: absolute; left: 0; right: 0; top: 0; bottom: env(safe-area-inset-bottom); padding: 10px 12px; transition: transform .15s; }
+    .mnav > *:active .mi { transform: scale(.94); }
+    .mnav .t { font-size: 15px; line-height: 1.2; }
+    .mnav .s { position: absolute; right: 12px; bottom: 10px; font-size: 11px; line-height: 15px; white-space: nowrap;
+               display: flex; align-items: center; gap: 4px; transition: opacity .2s, transform .3s; }
+    .mnav .s svg { width: 10px; height: 10px; }
+    .mnav .n { font-size: 20px; line-height: 1; }
+    body.nav-min .mnav .s { opacity: 0; transform: translateY(8px); }
+    .mzoom { display: block; position: fixed; z-index: 40; padding: 16px; background: var(--bg); color: var(--fg); font-size: 15px;
+             transition: left .42s cubic-bezier(.2, .8, .2, 1), top .42s cubic-bezier(.2, .8, .2, 1), width .42s cubic-bezier(.2, .8, .2, 1), height .42s cubic-bezier(.2, .8, .2, 1), font-size .42s; }
+    .mzoom.full { font-size: 26px; }
+  }
 </style>
 <script src="images/colors.js"></script>
 <script src="images/sheet_data.js"></script>   <!-- 인터넷이 안 될 때 쓰는 시트 사본 (시트_업데이트.command로 갱신) -->   <!-- 사진별 평균색 (없으면 임시 색) -->
@@ -253,6 +302,16 @@ const CONFIG = {
   pages: { article: 'articles.html', explore: 'explore.html' },
 };
 
+/* 11/10 모바일: 폭 700px 이하면 3칸. 폭이 기준을 넘나들면(회전 등) 새로 그림 */
+const MQ = matchMedia('(max-width: 700px)');
+const MOBILE = MQ.matches, COLS = MOBILE ? 3 : 12;
+MQ.addEventListener && MQ.addEventListener('change', () => location.reload());
+if (MOBILE) Object.assign(CONFIG, {
+  haloImage: [0.6, 0.85],    // 박스 아래 줄은 거의 사진으로 (빈 칸은 가끔)
+  holeRatio: [0.08, 0.1],    // 빈 칸은 가끔
+  blockSizes: [{ w: 2, h: 1, p: 5 }, { w: 1, h: 2, p: 3 }, { w: 2, h: 2, p: 3 }, { w: 3, h: 1, p: 1.5 }],   // 3×2·3×3은 가로 한 줄을 통째로 비워서 뺌
+});
+
 const ARROW_OUT = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M1 8h13M9 3l5 5-5 5"/></svg>';   // 이동 (같은 탭)
 const MENU_ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M8 14V2M2 8l6-6 6 6"/></svg>';
 
@@ -260,11 +319,19 @@ const MENU_ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" st
 const OV_OPEN = { name: { w: 2, h: 3 }, ov: { w: 2, h: 3 } };   // 10/18: 개요를 열었을 때 이름 박스·개요 크기 (가로×세로 칸). 닫혀 있을 땐 이름 3×2
 const BOXES = [
   { id: 'name',    w: 3, h: 2, tag: 'button', html: `<span class="t">폼을 보아하니</span><span class="s">interface archiving</span>` },
-  { id: 'article', w: 2, h: 1, tag: 'a', href: CONFIG.pages.article, html: `<span class="t">아티클</span><span class="s">2026년 11월 &lt;돌리다&gt; ${ARROW_OUT}</span>` },
+  { id: 'article', w: 2, h: 1, tag: 'a', href: CONFIG.pages.article, html: `<span class="t">아티클</span><span class="s">2026년 11월 <span style="white-space:nowrap">&lt;돌리다&gt;</span> ${ARROW_OUT}</span>` },
   { id: 'explore', w: 2, h: 1, tag: 'a', href: CONFIG.pages.explore, html: `<span class="t">탐색</span><span class="s">모든 인터페이스 보기 ${ARROW_OUT}</span>` },
   { id: 'all',     w: 1, h: 1, tag: 'div',  /* 누르면 반응 없음. 10/22: 1×1 그대로, '전체 인터페이스'는 작은 글씨 */ html: `<span class="t t-sm">전체 인터페이스</span><span class="n">1,026개</span>` },
 ];
 
+const SHOWN = MOBILE ? ['name', 'explore', 'article'].map(id => BOXES.find(b => b.id === id)) : BOXES;   // 그리드에 놓는 박스 (모바일: 이름 → 탐색 → 아티클)
+/* 11/10 모바일 개요: 화면 폭 전체 × 세로 2칸. 문장을 뜻 단위로 끊어 줄바꿈 */
+const SENTENCES_M = [
+  '버튼은 누르게, 손잡이는 당기게,\n다이얼은 돌리게 생겼다.\n우리는 처음 보는 물건도\n폼을 보고 다루는 법을 짐작한다.\n이처럼 서로 다른 두 대상을 이어 주는 접점을,\n이 프로젝트에서는 인터페이스라고 부른다.',
+  '그러나 익숙한 폼도 언젠가 사라진다.\n문손잡이가 자동문으로,\n열쇠가 얼굴 인식으로 바뀌면\n그것을 다루던 방식도 함께 잊힌다.',
+  '‘폼을 보아하니’는 지금 손에 닿는\n인터페이스의 폼과 그것이 이끄는 동작을\n모아 두는 오픈 아카이브다.\n‘탐색’에서는 동사와 분야로 골라 보고,\n‘아티클’에서는 한 동작으로\n여러 분야를 엮어 읽는다.',
+  '폼을 보아하니, 모아볼 만하다.',
+];
 const SENTENCES = [   // 문단 하나 = 항목 하나 (10/18: 현진 글을 다듬어 2×3에 스크롤 없이 들어가게)
   '버튼은 누르게, 손잡이는 당기게, 다이얼은 돌리게 생겼다. 우리는 처음 보는 물건도 폼을 보고 다루는 법을 짐작한다. 이처럼 서로 다른 두 대상을 이어 주는 접점을, 이 프로젝트에서는 인터페이스라고 부른다.',
   '그러나 익숙한 폼도 언젠가 사라진다. 문손잡이가 자동문으로, 열쇠가 얼굴 인식으로 바뀌면 그것을 다루던 방식도 함께 잊힌다.',
@@ -364,7 +431,7 @@ function solidColor(img) {
   } catch (e) { return '#2a2622'; }   // 파일을 직접 열면(file://) 색을 못 읽음
 }
 const grid = document.getElementById('grid');
-const cellPx = () => innerWidth / 12;
+const cellPx = () => innerWidth / COLS;
 
 /* ═════════ 배치 ═════════ */
 /* 박스: 첫 화면(온전히 보이는 행) 안에 랜덤, 서로 맞닿지 않게 */
@@ -403,6 +470,7 @@ function randomBoxes(rows, namePos) {
   return null;
 }
 function placeBoxes(rows) {
+  if (MOBILE) return SHOWN.map((b, i) => ({ c: 1 + rand(2), r: 1 + i, w: 2, h: 1 }));   // 모바일 (11/10): 폼을 보아하니 → 탐색 → 아티클, 각각 2×1로 위아래 붙여 쌓음. 가로 자리(왼쪽/오른쪽)만 랜덤
   /* 10/18: 이름 박스 자리는 먼저 고르게 랜덤으로 정함 (1~4열, 1~2행) → 나머지 박스만 멀리 떨어지게 고름
      (같이 고르면 '멀리 떨어진' 배치가 늘 이기면서 이름 박스가 왼쪽 위 모서리에 몰림) */
   const nb = BOXES.find(b => b.id === 'name');
@@ -434,13 +502,13 @@ function placeBlocks(base, boxes) {
     /* 박스 둘레 한 칸 */
     const halo = new Set();
     boxes.forEach(b => { for (let r = b.r - 1; r <= b.r + b.h; r++) for (let c = b.c - 1; c <= b.c + b.w; c++) {
-      const k = key(r, c); if (r >= 1 && c >= 1 && c <= 12 && !taken.has(k)) halo.add(k);
+      const k = key(r, c); if (r >= 1 && c >= 1 && c <= COLS && !taken.has(k)) halo.add(k);
     } });
     /* 둘레 칸 중 일부(CONFIG.haloImage, 10~30%)는 사진이 들어갈 수 있게 풀어 줌 → 빈 칸이 박스 쪽에 '몰려' 보이되 완전히 비지는 않음 */
     const [h0, h1] = CONFIG.haloImage;
     shuffle([...halo]).slice(0, Math.round(halo.size * (h0 + Math.random() * (h1 - h0)))).forEach(k => halo.delete(k));
-    let rows = Math.ceil(base / 12), target = rows * 12 - base;
-    while (target < halo.size + base * CONFIG.holeRatio[0]) { rows++; target += 12; }
+    let rows = Math.ceil(base / COLS), target = rows * COLS - base;
+    while (target < halo.size + base * CONFIG.holeRatio[0]) { rows++; target += COLS; }
     halo.forEach(k => taken.add(k));
     const near = new Set();                                     // 덩어리가 들어가면 안 되는 칸 (박스·둘레·덩어리와 맞닿는 칸)
     const addNear = b => { for (let r = b.r - 1; r <= b.r + b.h; r++) for (let c = b.c - 1; c <= b.c + b.w; c++) near.add(key(r, c)); };
@@ -449,14 +517,14 @@ function placeBlocks(base, boxes) {
     let left = target - halo.size, fails = 0;
     while (left > 0 && fails < 4000) {
       /* 남은 넓이를 덩어리(2·4·6·9칸)만으로 딱 채울 수 있는지: 1·3·5·7칸은 불가능 */
-      const ok = n => n === 0 || (n >= 2 && ![3, 5, 7].includes(n));
-      if (!ok(left)) { rows++; left += 12; continue; }        // 못 채우는 넓이면 줄을 하나 늘려서 맞춤
+      const ok = n => n === 0 || (n >= 2 && (MOBILE || ![3, 5, 7].includes(n)));   // 모바일은 3칸 덩어리(3×1)가 있어서 2 이상이면 다 채울 수 있음
+      if (!ok(left)) { rows++; left += COLS; continue; }        // 못 채우는 넓이면 줄을 하나 늘려서 맞춤
       const fit = CONFIG.blockSizes.filter(z => z.w * z.h <= left && ok(left - z.w * z.h));
-      if (!fit.length) { rows++; left += 12; continue; }
+      if (!fit.length) { rows++; left += COLS; continue; }
       const total = fit.reduce((t, z) => t + z.p, 0);
       let pick = Math.random() * total, z = fit[0];
       for (const f of fit) { pick -= f.p; if (pick <= 0) { z = f; break; } }
-      const b = { c: 1 + rand(13 - z.w), r: 1 + rand(rows - z.h + 1), w: z.w, h: z.h };
+      const b = { c: 1 + rand(COLS + 1 - z.w), r: 1 + rand(rows - z.h + 1), w: z.w, h: z.h };
       if (cellsOf(b).some(k => near.has(k) || taken.has(k))) { fails++; continue; }
       holes.push(b); addNear(b); cellsOf(b).forEach(k => taken.add(k));
       left -= z.w * z.h; fails = 0;
@@ -479,12 +547,12 @@ let IMAGES = [], items = [], boxEls = {}, colors = {};
 function build() {
   const rowsOnScreen = Math.max(4, Math.floor(innerHeight / cellPx()));
   const boxes = placeBoxes(rowsOnScreen);
-  const boxCells = BOXES.reduce((s, b) => s + b.w * b.h, 0);
+  const boxCells = boxes.reduce((s, b) => s + b.w * b.h, 0);
   const base = IMAGES.length + boxCells;
   /* 마지막 줄까지 꽉 차도록 빈 칸 수를 정함 */
   const { holes } = placeBlocks(base, boxes);
 
-  BOXES.forEach((b, i) => {
+  SHOWN.forEach((b, i) => {
     const el = document.createElement(b.tag);
     el.className = `box box-${b.id}` + (boxes[i].c + (b.w - 1) / 2 > 6.5 ? ' right' : '');
     if (b.href) el.href = b.href;   // 모든 이동은 같은 탭에서
@@ -504,7 +572,7 @@ function build() {
   holes.forEach(h => blocked.add(key(h.r, h.c)));
   let r = 1, c = 1;
   IMAGES.forEach(im => {
-    while (blocked.has(key(r, c))) { c++; if (c > 12) { c = 1; r++; } }
+    while (blocked.has(key(r, c))) { c++; if (c > COLS) { c = 1; r++; } }
     const el = document.createElement('div');
     el.className = 'item';
     el.style.setProperty('--solid', im.solid);
@@ -513,7 +581,7 @@ function build() {
     setPos(el, el._home);
     grid.appendChild(el);
     items.push(el);
-    c++; if (c > 12) { c = 1; r++; }
+    c++; if (c > COLS) { c = 1; r++; }
   });
   buildOverview();
   buildMenu();
@@ -571,6 +639,14 @@ let openEl = null, infoEl = null;
    우선순위: 클릭한 칸이 사진의 왼쪽 위 → 오른쪽 위 → 왼쪽 아래 → 오른쪽 아래, 설명은 오른쪽 → 왼쪽 → 아래 → 위 */
 function regionAt(item) {
   const { r: r0, c: c0 } = item._home;
+  if (MOBILE) {                                                  // 모바일 (11/10): 누른 칸을 기준으로 사진 2×2 + 바로 아래 설명 2×1. 박스를 가리지 않는 자리 중 누른 칸을 포함하는 것부터
+    const bx = Object.values(boxEls).map(b => b.home);
+    const free = x => x.c >= 1 && x.c + x.w - 1 <= COLS && x.r >= 1 && !bx.some(b => overlap(x, b));
+    const at = (c, r) => ({ img: { c, r, w: 2, h: 2 }, info: { c, r: r + 2, w: 2, h: 1 }, side: 'bottom' });
+    for (const [dc, dr] of [[0, 0], [-1, 0], [0, -1], [-1, -1]]) { const s = at(c0 + dc, r0 + dr); if (free(s.img) && free(s.info)) return s; }
+    for (let r = r0; r < r0 + 8; r++) for (const c of [Math.min(c0, COLS - 1), Math.max(1, c0 - 1)]) { const s = at(c, r); if (free(s.img) && free(s.info)) return s; }
+    return at(Math.min(c0, COLS - 1), r0);
+  }
   const boxes = Object.values(boxEls).map(b => b.home);
   const inside = x => x.c >= 1 && x.c + x.w - 1 <= 12 && x.r >= 1;
   const free = x => inside(x) && !boxes.some(b => overlap(x, b));
@@ -611,6 +687,7 @@ function regionAt(item) {
    - 박스도 움직임(CONFIG.boxesMove): 걸친 세로줄의 아이템·빈 칸·박스가 모두 똑같이 두 칸 내려감.
      박스가 다른 세로줄에도 걸쳐 있으면 그 줄도 같이 내려감 (박스 옆에 잠깐 빈자리가 생김) */
 function pushDown(spot, focus) {
+  if (MOBILE) return pushArea({ c: spot.img.c, r: spot.img.r, w: 2, h: spot.img.h + spot.info.h }, focus);   // 걸친 두 세로줄만 밀려남
   pushArea({ c: Math.min(spot.img.c, spot.info.c), r: Math.min(spot.img.r, spot.info.r), w: spot.img.c === spot.info.c ? 2 : 4, h: spot.img.r === spot.info.r ? 2 : 4 }, focus);
 }
 /* 10/18: 사진 열기와 개요 열기가 같은 규칙으로 밀어냄 — region(가로 w × 세로 h)에 걸친 세로줄만 */
@@ -638,7 +715,7 @@ function pushArea(region, focus) {
   while (changed) {
     changed = false;
     Object.values(boxEls).forEach(b => {
-      if (moving.has(b) || overlap(b.home, region)) return;
+      if (moving.has(b) || (overlap(b.home, region) && !(MOBILE && b !== boxEls.name))) return;   // 모바일: 개요 자리에 있던 탐색·아티클 박스도 아래로 밀려남
       const h = b.home;
       let hit = false;
       for (let c = h.c; c < h.c + h.w; c++) if (start[c] !== undefined && h.r + h.h - 1 >= start[c]) hit = true;
@@ -686,7 +763,7 @@ function openItem(el) {
     pushDown(spot, el);
     openEl = el;
     el.classList.add('open');
-    el.style.gridColumn = `${spot.img.c} / span 2`; el.style.gridRow = `${spot.img.r} / span 2`;
+    el.style.gridColumn = `${spot.img.c} / span ${spot.img.w}`; el.style.gridRow = `${spot.img.r} / span ${spot.img.h}`;
     const d = el._data, meta = ITEM_DATA[d.code] || {};
     infoEl = document.createElement('div');
     infoEl.className = 'info from-' + spot.side;
@@ -701,6 +778,11 @@ function openItem(el) {
     place(infoEl, spot.info);
     el.after(infoEl);
   }, { focus: el, opening: true, switching });
+  if (MOBILE) {                                                  // 모바일: 열린 사진과 설명이 한 화면에 다 보이게 살짝 스크롤
+    const c = cellPx(), top = (spot.img.r - 1) * c, bottom = top + (spot.img.h + spot.info.h) * c;
+    const navH = (document.querySelector('.mnav > *') || {}).offsetHeight || 0;
+    if (top < scrollY || bottom > scrollY + innerHeight - navH) scrollTo({ top: Math.max(0, top - c * 0.25), behavior: 'smooth' });
+  }
 }
 /* 닫기: 설명 창은 펼쳐졌던 쪽으로 접히며 사라짐 */
 function closeDom() {
@@ -822,18 +904,27 @@ function buildOverview() {
   const { el: nameEl, rect } = boxEls.name;
   ovEl = document.createElement('div');
   ovEl.className = 'overview';
-  ovEl.innerHTML = `<div class="ov-text">${SENTENCES.map(s => `<p>${s.replace(/\n/g, '<br>')}</p>`).join('')}</div>`;
+  ovEl.innerHTML = `<div class="ov-text">${(MOBILE ? SENTENCES_M : SENTENCES).map(s => `<p>${s.replace(/\n/g, '<br>')}</p>`).join('')}</div>`;
   const ovText = ovEl.firstElementChild;
   paint(ovEl, colors.name);
   grid.appendChild(ovEl);
   const { w, h } = OV_OPEN.ov, nw = OV_OPEN.name.w, nh = OV_OPEN.name.h;   // 열렸을 때: 이름 nw×nh, 개요 w×h
-  const toRight = rect.c + nw + w - 1 <= 12;                    // 되도록 오른쪽 (이름 박스가 왼쪽에 있으므로)
+  const toRight = rect.c + nw + w - 1 <= COLS;                  // 되도록 오른쪽 (이름 박스가 왼쪽에 있으므로)
+  nameEl.style.setProperty('--w0', rect.w); nameEl.style.setProperty('--h0', rect.h);
+  if (MOBILE) {                                                  // 모바일: 이름 박스는 그대로, 바로 아래에 화면 폭 전체 3×3으로 위에서 아래로 펼쳐짐
+    ovEl.style.setProperty('--w', COLS); ovEl.style.setProperty('--h', 2);   // 11/10: 세로 두 칸만
+    ovEl.style.setProperty('--c', 1); ovEl.style.setProperty('--r', rect.r + rect.h);
+    ovEl.style.setProperty('--closed', 'inset(0 0 100% 0)');
+    nameEl.style.setProperty('--grow', 0); nameEl.style.setProperty('--grow-w', 0);
+    ovRegion = { c: 1, r: rect.r + rect.h, w: COLS, h: 2 };
+  } else {
   ovEl.style.setProperty('--w', w); ovEl.style.setProperty('--h', h);
   ovEl.style.setProperty('--c', toRight ? rect.c + nw : rect.c - w);
   ovEl.style.setProperty('--r', rect.r);
   ovEl.style.setProperty('--closed', toRight ? 'inset(0 100% 0 0)' : 'inset(0 0 0 100%)');   // 이름 박스 쪽에서 펼쳐짐
-  nameEl.style.setProperty('--grow', nh - rect.h); nameEl.style.setProperty('--grow-w', nw - rect.w); nameEl.style.setProperty('--w0', rect.w); nameEl.style.setProperty('--h0', rect.h);
+  nameEl.style.setProperty('--grow', nh - rect.h); nameEl.style.setProperty('--grow-w', nw - rect.w);
   ovRegion = { c: toRight ? rect.c : rect.c - w, r: rect.r, w: nw + w, h: Math.max(nh, h) };   // 늘어난 이름 박스 + 개요 = 밀어낼 자리
+  }
   nameEl.addEventListener('click', e => { e.stopPropagation(); toggleOverview(); });
   ovEl.addEventListener('click', e => { e.stopPropagation(); toggleOverview(false); });
   const markMore = () => ovEl.classList.toggle('more', ovText.scrollTop + ovText.clientHeight < ovText.scrollHeight - 2);
@@ -879,8 +970,8 @@ function buildMenu() {
   paint(fab, colors.name);
   const entries = [
     { label: '개요', color: colors.name, act: () => { scrollTo({ top: 0, behavior: 'smooth' }); setTimeout(() => toggleOverview(true), 600); } },
-    { label: '아티클', color: colors.article, href: CONFIG.pages.article },
     { label: '탐색', color: colors.explore, href: CONFIG.pages.explore },
+    { label: '아티클', color: colors.article, href: CONFIG.pages.article },
   ];
   entries.forEach((m, i) => {
     const el = document.createElement(m.href ? 'a' : 'button');
@@ -893,6 +984,52 @@ function buildMenu() {
   });
   { const used = [...menu.children].map(e => e.style.getPropertyValue('--bg').toLowerCase()); const free = PALETTE.filter(c => !used.includes(c.toLowerCase())); paint(fab, free[Math.floor(Math.random() * free.length)]); }   // 햄버거 칸은 메뉴 칸들과 다른 색 → 탭끼리 구분됨 (2026-10-15)
 }
+/* ═════════ 모바일 아래 메뉴 (11/10) ═════════
+   아티클 · 탐색 · 전체 세 칸 (화면 폭 3등분 = 그리드 한 칸 폭). 처음엔 아래에서 한 칸씩 올라옴
+   스크롤을 내리면 얇아지고(부가설명 사라짐) 조금만 올려도 다시 커짐 / 누르면 그 칸이 화면 전체로 커지며 이동 / 전체는 숫자가 올라감 */
+function buildMobileNav() {
+  if (!MOBILE || document.querySelector('.mnav')) return;
+  const nav = document.createElement('nav'); nav.className = 'mnav';
+  [
+    { id: 'article', href: CONFIG.pages.article, t: '아티클', s: `11월 &lt;돌리다&gt; ${ARROW_OUT}` },
+    { id: 'explore', href: CONFIG.pages.explore, t: '탐색', s: `모두 보기 ${ARROW_OUT}` },
+    { id: 'all', t: '전체', s: '<span class="n">1,026</span>' },
+  ].forEach((m, i) => {
+    const el = document.createElement(m.href ? 'a' : 'div');
+    if (m.href) el.href = m.href;
+    el.innerHTML = `<div class="mi"><span class="t">${m.t}</span><span class="s">${m.s}</span></div>`;
+    paint(el, colors[m.id]);
+    el.style.setProperty('--d', (0.12 + i * 0.07) + 's');
+    el.addEventListener('click', e => { e.stopPropagation(); if (m.href) { e.preventDefault(); zoomTo(el, m.href); } else countUp(el); });
+    nav.appendChild(el);
+  });
+  document.body.appendChild(nav);
+  requestAnimationFrame(() => requestAnimationFrame(() => nav.classList.add('on')));
+  setTimeout(() => [...nav.children].forEach(x => x.style.setProperty('--d', '0s')), 900);
+  let last = scrollY;
+  addEventListener('scroll', () => {
+    const dy = scrollY - last; last = scrollY;
+    if (scrollY < cellPx() / 2 || dy < -4) document.body.classList.remove('nav-min');
+    else if (dy > 4) document.body.classList.add('nav-min');
+  }, { passive: true });
+}
+function countUp(el) {
+  const n = el.querySelector('.n'); if (!n) return;
+  const to = 1026, t0 = performance.now();
+  (function f(t) { const p = Math.min(1, (t - t0) / 700); n.textContent = Math.round(to * (1 - (1 - p) ** 3)).toLocaleString(); if (p < 1) requestAnimationFrame(f); })(t0);
+}
+function zoomTo(el, href) {
+  if (el._leaving) return; el._leaving = true;
+  const r = el.getBoundingClientRect(), z = document.createElement('div');
+  z.className = 'mzoom';
+  z.textContent = el.querySelector('.t').textContent;
+  z.style.cssText = `left:${r.left}px; top:${r.top}px; width:${r.width}px; height:${r.height}px; --bg:${el.style.getPropertyValue('--bg')}; --fg:${el.style.getPropertyValue('--fg')}`;
+  document.body.appendChild(z); z.getBoundingClientRect();
+  Object.assign(z.style, { left: '0px', top: '0px', width: innerWidth + 'px', height: Math.max(innerHeight, document.documentElement.clientHeight) + 'px' });
+  z.classList.add('full');
+  setTimeout(() => { location.href = href; }, 460);
+}
+addEventListener('pageshow', e => { if (!e.persisted) return; document.querySelectorAll('.mzoom').forEach(z => z.remove()); document.querySelectorAll('.mnav > *').forEach(x => { x._leaving = false; }); });
 function toggleMenu(on) { const v = menu.classList.toggle('on', on ?? !menu.classList.contains('on')); fab.classList.toggle('open', v); }   // 메뉴는 사진 위에 떠 있어서 히트맵 없음
 fab.addEventListener('click', e => { e.stopPropagation(); toggleMenu(); });
 document.addEventListener('click', e => { if (!e.target.closest('.menu, .fab')) toggleMenu(false); });
@@ -911,12 +1048,16 @@ const heat = (() => {
   if (!CONFIG.heat) { canvas.remove(); return { track() {} }; }     // 히트맵 끈 버전: 빈 칸은 그냥 검정
   const ctx = canvas.getContext('2d');
   const small = document.createElement('canvas'), sctx = small.getContext('2d');
-  let W, H, fw, fh, T, B, M, Q, img, running = false, lastScroll = scrollY, acc = 0;
+  let W = 0, H = 0, fw, fh, T, B, M, Q, img, running = false, lastScroll = scrollY, acc = 0;
   const movers = new Map();
   const mouse = { x: 0, y: 0, has: false, trail: [] };
   function resize() {
-    W = innerWidth; H = innerHeight;
+    /* 모바일: 스크롤하면 주소창이 접히며 높이가 바뀜 → 그때마다 열이 지워지지 않게, 폭이 그대로면 무시. 높이는 화면 전체 높이로 넉넉하게 */
+    const h = MOBILE ? Math.max(innerHeight, screen.height || 0) : innerHeight;
+    if (T && innerWidth === W && (MOBILE || h === H)) return;
+    W = innerWidth; H = h;
     canvas.width = W; canvas.height = H;
+    canvas.style.height = H + 'px';
     fw = Math.ceil(W * S); fh = Math.ceil(H * S);
     small.width = fw; small.height = fh;
     T = new Float32Array(fw * fh); B = new Float32Array(fw * fh);
@@ -947,7 +1088,7 @@ const heat = (() => {
     else for (let j = y0; j < y1; j++) for (let i = j * fw + x0, e = j * fw + x1; i < e; i++) if (M[i] < v) M[i] = v;
     if (x1 > x0 && y1 > y0) massDirty = true;
   }
-  function stampPad(r, pad, v = 1) { const p = innerWidth / 12 * pad; stamp(r.left - p, r.top - p, r.width + 2 * p, r.height + 2 * p, v); }
+  function stampPad(r, pad, v = 1) { const p = innerWidth / COLS * pad; stamp(r.left - p, r.top - p, r.width + 2 * p, r.height + 2 * p, v); }
   function blur(r) {                    // 가로·세로 상자 흐림 (두 번 = 부드러운 번짐)
     for (let pass = 0; pass < 2; pass++) {
       for (let j = 0; j < fh; j++) {     // 가로 → Q
@@ -970,7 +1111,7 @@ const heat = (() => {
   }
   function flushMass(k, size = CONFIG.heatBlob) {
     if (!massDirty) return;
-    blur(Math.max(1, Math.round(innerWidth / 12 * S * size)));
+    blur(Math.max(1, Math.round(innerWidth / COLS * S * size)));
     for (let n = 0; n < M.length; n++) if (M[n] > 0.01) T[n] = Math.min(1, T[n] + M[n] * k);
     M.fill(0); massDirty = false;
   }
@@ -985,7 +1126,7 @@ const heat = (() => {
     const dyScroll = scrollY - lastScroll;
     acc += dyScroll * S * CONFIG.heatFollow; lastScroll = scrollY;
     if (dyScroll) {
-      const cell = innerWidth / 12, k = CONFIG.heatScroll[0] * Math.min(1, Math.abs(dyScroll) / CONFIG.heatScroll[1]) ** 1.5;
+      const cell = innerWidth / COLS, k = CONFIG.heatScroll[0] * Math.min(1, Math.abs(dyScroll) / CONFIG.heatScroll[1]) ** 1.5;
       items.forEach(el => {
         const top = (el._pos.r - 1) * cell - scrollY;
         if (top > H || top + cell < 0) return;
@@ -1004,13 +1145,18 @@ const heat = (() => {
     /* 마우스 */
     mouse.trail.forEach(p => add(p.x, p.y, 0, 0, p.k, 26));
     mouse.trail.length = 0;
+    /* 모바일 (11/10): 손가락을 대고 가만히 있으면 그 자리가 점점 뜨거워지고 넓어짐 (손자국처럼) */
+    if (touch.on) {
+      touch.hold++;
+      if (touch.hold > 12) add(touch.x, touch.y, 0, 0, Math.min(0.05, touch.hold * 0.0006), 22 + Math.min(touch.hold, 150) * 0.2);
+    }
     /* 밀려나는 아이템: 지금 있는 자리 전체에 열 → 빈 칸을 지나가면 그 자리에 자국 */
     const now = performance.now();
     /* 움직이는 아이템 (2026-10-14): 마우스처럼 '지나간 길'에만 열을 남김
        - 매 프레임 직전 자리와 지금 자리를 합친 네모에, 이번 프레임에 움직인 만큼(속도) 열을 찍음
        - 멈춰 있을 때(차례 기다리는 중·다 도착한 뒤)는 열 없음 → 열이 아이템을 따라가며 뒤에서 식음
        - 위치가 안 변하고 잘려 나오기만 하는 것(설명 접힘·개요·태그 판 등, area)은 그 자리 전체에 약하게 */
-    const cell = innerWidth / 12, marks = [[], []];
+    const cell = innerWidth / COLS, marks = [[], []];
     movers.forEach((m, el) => {
       if (now > m.until || !el.isConnected) { movers.delete(el); return; }
       const r = el.getBoundingClientRect();
@@ -1052,12 +1198,13 @@ const heat = (() => {
     ctx.clearRect(0, 0, W, H);
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(small, 0, 0, W, H);
-    if (max < 0.004 && !movers.size && !mouse.trail.length && !dyScroll) { T.fill(0); ctx.clearRect(0, 0, W, H); running = false; return; }
+    if (max < 0.004 && !movers.size && !mouse.trail.length && !dyScroll && !touch.on) { T.fill(0); ctx.clearRect(0, 0, W, H); running = false; return; }
     requestAnimationFrame(frame);
   }
   function wake() { if (!running) { running = true; lastScroll = scrollY; acc = 0; requestAnimationFrame(frame); } }
   /* 마우스: 지나간 경로를 따라 열을 남김 (히트맵은 사진·박스 아래 층이라 빈 칸에서만 보임) */
   addEventListener('pointermove', e => {
+    if (e.pointerType === 'touch') return;                         // 손가락은 아래 touch에서 따로
     const x = e.clientX, y = e.clientY;
     if (mouse.has) {
       const dx = x - mouse.x, dy = y - mouse.y, dist = Math.hypot(dx, dy);
@@ -1068,6 +1215,27 @@ const heat = (() => {
     wake();
   }, { passive: true });
   document.addEventListener('pointerleave', () => { mouse.has = false; });
+  /* 터치 (11/10): 손가락이 지나간 길에 열 + 닿는 순간 작은 열 + 누르고 있으면 점점 뜨거워짐 */
+  const touch = { on: false, x: 0, y: 0, hold: 0 };
+  addEventListener('touchstart', e => {
+    const t = e.touches[0]; if (!t) return;
+    Object.assign(touch, { on: true, x: t.clientX, y: t.clientY, hold: 0 });
+    mouse.x = t.clientX; mouse.y = t.clientY; mouse.has = true;
+    mouse.trail.push({ x: t.clientX, y: t.clientY, k: 0.25 });
+    wake();
+  }, { passive: true });
+  addEventListener('touchmove', e => {
+    const t = e.touches[0]; if (!t) return;
+    const x = t.clientX, y = t.clientY, dx = x - mouse.x, dy = y - mouse.y, dist = Math.hypot(dx, dy);
+    if (dist > 6) touch.hold = 0;
+    const steps = Math.max(1, Math.ceil(dist / 10)), k = Math.min(dist / 30, 1) * 0.5;
+    for (let s = 1; s <= steps; s++) mouse.trail.push({ x: mouse.x + dx * s / steps, y: mouse.y + dy * s / steps, k: k / steps });
+    mouse.x = x; mouse.y = y; touch.x = x; touch.y = y;
+    wake();
+  }, { passive: true });
+  const touchEnd = () => { touch.on = false; mouse.has = false; };
+  addEventListener('touchend', touchEnd, { passive: true });
+  addEventListener('touchcancel', touchEnd, { passive: true });
   addEventListener('scroll', () => { if (!running) { running = true; requestAnimationFrame(frame); } }, { passive: true });   // 스크롤도 열을 만듦
   resize();
   addEventListener('resize', resize);
@@ -1117,7 +1285,7 @@ const heat = (() => {
   up.addEventListener('click', () => scrollTo({ top: 0, behavior: 'smooth' }));
   addEventListener('scroll', () => {
     if (!up.dataset.painted && colors.name) { paint(up, colors.name); up.dataset.painted = 1; }
-    up.classList.toggle('show', scrollY > innerWidth / 24);   // 반 칸 이상 내리면
+    up.classList.toggle('show', scrollY > cellPx() / 2);   // 반 칸 이상 내리면
   }, { passive: true });
 })();
 </script>
@@ -1128,6 +1296,7 @@ const heat = (() => {
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   addEventListener('load', () => scrollTo(0, 0));
   addEventListener('pageshow', e => { if (e.persisted) scrollTo(0, 0); });
+  if (matchMedia('(max-width: 700px)').matches) return;   // 11/10: 폰에서는 2분 자리 비움 → 메인 이동 안 함
   const IDLE = 2 * 60 * 1000;
   const home = () => { try { return sessionStorage.getItem('haebwaya-home') || 'index.html'; } catch (e) { return 'index.html'; } };
   const onHome = () => { const f = location.pathname.split('/').pop() || 'index.html'; return f === home() || f.startsWith('index'); };
@@ -1151,7 +1320,7 @@ const heat = (() => {
    - 다 접히면 이동. 뒤로가기로 돌아오면 원래대로 */
 (() => {
   const LEAVE = { dur: 450, step: 22, ease: 'cubic-bezier(.4, 0, .2, 1)' };
-  const cell = () => innerWidth / 12;
+  const cell = () => innerWidth / COLS;
   function leaveFold(box, href, wait = 0) {   // wait: 이동까지 최소 시간 (다른 퇴장 모션과 함께 쓸 때)
     if (box._leaving) return;
     box._leaving = true;
