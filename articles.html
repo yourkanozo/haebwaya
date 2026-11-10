@@ -253,6 +253,13 @@
   }
   @media (max-width: 700px) {
     .box .s.ttl { white-space: normal; }
+    /* 11/11: 사진 로딩 — 폰에서는 단색 판이 한쪽으로 미끄러져 나가며 사진이 드러남 (clip-path 대신 transform → 사파리에서도 확실히 움직임) */
+    .item { overflow: hidden; }
+    .item::after { clip-path: none !important; transition: transform var(--reveal, .6s) var(--ease); }
+    .item.done.d-r::after { transform: translateX(100%); }
+    .item.done.d-l::after { transform: translateX(-100%); }
+    .item.done.d-d::after { transform: translateY(100%); }
+    .item.done.d-u::after { transform: translateY(-100%); }
   }
 </style>
 <script src="images/colors.js"></script>
@@ -309,6 +316,7 @@ const CONFIG = {
 const MQ = matchMedia('(max-width: 700px)');
 const MOBILE = MQ.matches, COLS = MOBILE ? 3 : 12;
 MQ.addEventListener && MQ.addEventListener('change', () => location.reload());
+if (MOBILE) CONFIG.heatCool = 0.993;                              // 11/11: 폰에서는 잔상이 더 오래 남음
 const ARROW_OUT = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M1 8h13M9 3l5 5-5 5"/></svg>';   // 이동 (같은 탭)
 const MENU_ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M8 14V2M2 8l6-6 6 6"/></svg>';
 
@@ -420,8 +428,8 @@ function buildTop() {
     if (b.tag === 'button') el.type = 'button';
     el.innerHTML = `<div class="box-in"></div>${b.html}`;
     paint(el, colors[b.id]);
-    /* 모바일 맨 윗줄 (11/10): 1줄 폼을 보아하니 2×1 + 정렬 1×1 / 2줄 아티클 1×1 + 검색 2×1 (아티클과 검색은 같은 색으로 이어져 한 박스처럼) */
-    const M = { name: { c: 1, r: 1, w: 2 }, sort: { c: 3, r: 1, w: 1 }, article: { c: 1, r: 2, w: 1 }, search: { c: 2, r: 2, w: 2 } };
+    /* 모바일 맨 윗줄 (11/11): 1줄 폼을 보아하니 2×1 + 아티클 1×1 / 2줄 정렬 1×1 + 검색 2×1 (아티클과 검색은 같은 색, 세로로 이어짐) */
+    const M = { name: { c: 1, r: 1, w: 2 }, article: { c: 3, r: 1, w: 1 }, sort: { c: 1, r: 2, w: 1 }, search: { c: 2, r: 2, w: 2 } };
     const rect = MOBILE ? { ...M[b.id], h: 1 } : { c: b.c, r: 1, w: b.w, h: b.h };
     place(el, rect);
     grid.appendChild(el);
@@ -784,7 +792,7 @@ const heat = (() => {
   }, { passive: true });
   document.addEventListener('pointerleave', () => { mouse.has = false; });
   /* 11/10 터치: 손가락이 지나간 길에 열 + 닿는 순간 작은 열 (마우스와 같은 방식) */
-  addEventListener('touchstart', e => { const t = e.touches[0]; if (!t) return; mouse.x = t.clientX; mouse.y = t.clientY; mouse.has = true; mouse.trail.push({ x: t.clientX, y: t.clientY, k: 0.25 }); wake(); }, { passive: true });
+  addEventListener('touchstart', e => { const t = e.touches[0]; if (!t) return; mouse.x = t.clientX; mouse.y = t.clientY; mouse.has = true; const x = t.clientX, y = t.clientY; for (let i = 0; i < 24; i++) setTimeout(() => { mouse.trail.push({ x, y, k: 0.012 }); wake(); }, i * 30); }, { passive: true });   // 11/11: 누른 자리가 천천히(0.7초) 달아오름
   addEventListener('touchmove', e => {
     const t = e.touches[0]; if (!t) return;
     const x = t.clientX, y = t.clientY, dx = x - mouse.x, dy = y - mouse.y, dist = Math.hypot(dx, dy);

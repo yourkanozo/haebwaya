@@ -226,18 +226,31 @@
   @media (max-width: 700px) {
     :root { --cell: calc(100vw / 3); }
     .row12 { grid-template-columns: repeat(3, var(--cell)); }
-    /* 맨 위 (11/10): 1줄 폼을 보아하니 2×1 + 탐색 1×1 / 2줄 검색 3×1 (탐색과 같은 색) / 3줄 분야 · 동사 · 고른 태그 */
+    /* 맨 위 (11/11): 1줄 폼을 보아하니 2×1 + 탐색 1×1 / 2줄 동사 · 분야 · 검색 1칸씩 나란히 */
     .top { height: auto; grid-auto-rows: var(--cell); }
     .b-name   { grid-column: 1 / span 2; grid-row: 1; }
     .b-exp    { grid-column: 3 / span 1; grid-row: 1; }
-    .b-search { grid-column: 1 / span 3; grid-row: 2; }
-    .b-field  { grid-column: 1 / span 1; grid-row: 3; }
-    .b-verb   { grid-column: 2 / span 1; grid-row: 3; }
-    .picked   { grid-column: 3 / span 1; grid-row: 3; overflow-x: auto; scrollbar-width: none; }
-    .picked::-webkit-scrollbar { display: none; }
-    .pk span { left: 12px; top: 12px; } .pk i { right: 12px; bottom: 12px; }
-    .tags.verbs, .tags.fields, .panel[data-layout="side"] .tags.verbs, .panel[data-layout="side"] .tags.fields { grid-column: 1 / -1; }
-    .t-b .tag span { left: 12px; top: 12px; } .t-b .tag i { right: 12px; bottom: 12px; }
+    .b-verb   { grid-column: 1 / span 1; grid-row: 2; }
+    .b-field  { grid-column: 2 / span 1; grid-row: 2; }
+    .b-search { grid-column: 3 / span 1; grid-row: 2; }
+    .b-search input { font-size: 12px; }
+    .b-grp .s { white-space: normal; max-width: calc(100% - 28px); text-align: right; justify-content: flex-end; flex-wrap: wrap; line-height: 1.3; }
+    .picked { display: none; }                                         /* 고른 태그는 동사·분야 박스 안에 표시 */
+    /* 하위 태그 (11/11): 사진을 밀어내지 않고, 메뉴처럼 박스 아래로 작게 내려옴 (사진 위에 떠 있음).
+       스크롤하거나 다른 곳을 누르면 알아서 접힘 */
+    .panel { position: absolute; left: 0; right: 0; top: calc(var(--cell) * 2); height: auto !important; z-index: 30; overflow: visible;
+             clip-path: inset(0 0 100% 0); transition: clip-path .35s var(--ease); pointer-events: none; }
+    .panel.on { clip-path: inset(0 0 -20px 0); pointer-events: auto; filter: drop-shadow(0 2px 6px rgba(0,0,0,.28)); }
+    .panel .tags.show, .t-b .panel .tags.show { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: none; grid-auto-flow: row; grid-auto-rows: 44px; grid-column: auto; overflow: visible; }
+    .t-b .tag { display: flex; align-items: center; justify-content: space-between; padding: 0 12px; font-size: 14px; }
+    .t-b .tag span, .t-b .tag i { position: static; }
+    /* 11/11: 사진 로딩 — 폰에서는 단색 판이 한쪽으로 미끄러져 나가며 사진이 드러남 (clip-path 대신 transform → 사파리에서도 확실히 움직임) */
+    .item { overflow: hidden; }
+    .item::after { clip-path: none !important; transition: transform var(--reveal, .6s) var(--ease); }
+    .item.done.d-r::after { transform: translateX(100%); }
+    .item.done.d-l::after { transform: translateX(-100%); }
+    .item.done.d-d::after { transform: translateY(100%); }
+    .item.done.d-u::after { transform: translateY(-100%); }
     .info .desc { display: none; }                                     /* 설명 창 2×1: 이름·동사·분야만 */
     .info .name { margin-top: 6px; }
   }
@@ -398,7 +411,20 @@ function buildPanel() {
 /* 동사·분야 박스를 누르면: 그 아래로 태그 판이 펼쳐지고 사진들이 아래로 밀려남 (사진 열기와 같은 규칙·히트맵)
    다시 누르면 접히며 사진들이 돌아옴. 다른 쪽을 누르면 판 내용만 바뀜 */
 let openGroup = null;
+function mShowGroup(g) {                                         // 모바일 (11/11): 판이 박스 아래로 작게 내려옴 (사진은 그대로)
+  openGroup = g;
+  clearTimeout(mShowGroup.t);
+  const swap = () => panel.querySelectorAll('.tags').forEach(t => t.classList.toggle('show', !!g && t.classList.contains(g)));
+  if (g) swap(); else mShowGroup.t = setTimeout(swap, 360);      // 접힐 때는 다 걷힐 때까지 태그를 그대로 둠
+  document.querySelectorAll('.b-grp').forEach(b => b.classList.toggle('open', b.dataset.g === g));
+  panel.classList.toggle('on', !!g);
+}
+if (MOBILE) {
+  addEventListener('scroll', () => { if (openGroup && scrollY > 4) mShowGroup(null); }, { passive: true });   // 스크롤하면 접힘
+  document.addEventListener('click', e => { if (openGroup && !e.target.closest('.panel, .b-grp')) mShowGroup(null); });   // 다른 곳을 누르면 접힘
+}
 function showGroup(g, animate = true) {
+  if (MOBILE) return mShowGroup(g);
   setTimeout(revealVisible, MOTION.pushDur + 400);             // 판이 열리고 닫혀 사진이 움직인 뒤 새로 보이는 사진
   const before = new Map(items.map(el => [el, el.getBoundingClientRect()]));
   const oldH = panel.offsetHeight, prev = openGroup;
@@ -704,6 +730,11 @@ function update(swap = false) {
       t.style.setProperty('--heat', `rgb(${[1, 2, 3].map(j => Math.round(a[j] + (c[j] - a[j]) * k)).join(',')})`); });
   }
   const any = sel.verbs.size || sel.field || sel.q;
+  if (MOBILE) {                                                  // 모바일: 고른 태그를 동사·분야 박스 아래쪽에 (따로 줄을 두지 않음)
+    const vs = [...sel.verbs];
+    document.querySelector('#gVerb .s').innerHTML = (vs.length ? esc('#' + vs[0]) + (vs.length > 1 ? ` 외 ${vs.length - 1}` : '') : '복수 선택') + ' ' + DOWN;
+    document.querySelector('#gField .s').innerHTML = (sel.field ? esc(sel.field) : '단일 선택') + ' ' + DOWN;
+  }
   /* 맨 윗줄: 고른 태그를 작은 키로 (누르면 해제) */
   const picked = document.getElementById('picked');
   const pk = (k, v, c) => `<button class="pk" type="button" data-k="${k}" data-v="${esc(v)}" style="--grp:${c};--grp-fg:${fgOf(c)}"><span>${k === 'verbs' ? '#' : ''}${esc(v)}</span><i>×</i></button>`;
@@ -776,6 +807,7 @@ const HEAT = {
   heatEmber: 0.15,           // 이보다 옅은 열은 잔열 — 식는 속도를 0.4배로 늦춤 (10/17)
   heatCool: 0.985,           // 한 프레임마다 남는 열 (1에 가까울수록 늦게 식음). 10/14: 0.986 → 0.975 → 0.965 (꼬리 짧게) → 0.985 (10/17: 잔열이 오래 남게)
 };
+if (MOBILE) HEAT.heatCool = 0.993;                                // 11/11: 폰에서는 잔상이 더 오래 남음
 /* ═════════ 히트맵 (메인과 같은 규칙: 마우스 · 움직이는 사진 · 스크롤) — 빈 곳(검정)으로만 보임 ═════════ */
 const heat = (() => {
   let fastUntil = 0;
@@ -946,7 +978,7 @@ const heat = (() => {
   }, { passive: true });
   document.addEventListener('pointerleave', () => { mouse.has = false; });
   /* 11/10 터치: 손가락이 지나간 길에 열 + 닿는 순간 작은 열 (마우스와 같은 방식) */
-  addEventListener('touchstart', e => { const t = e.touches[0]; if (!t) return; mouse.x = t.clientX; mouse.y = t.clientY; mouse.has = true; mouse.trail.push({ x: t.clientX, y: t.clientY, k: 0.25 }); wake(); }, { passive: true });
+  addEventListener('touchstart', e => { const t = e.touches[0]; if (!t) return; mouse.x = t.clientX; mouse.y = t.clientY; mouse.has = true; const x = t.clientX, y = t.clientY; for (let i = 0; i < 24; i++) setTimeout(() => { mouse.trail.push({ x, y, k: 0.012 }); wake(); }, i * 30); }, { passive: true });   // 11/11: 누른 자리가 천천히(0.7초) 달아오름
   addEventListener('touchmove', e => {
     const t = e.touches[0]; if (!t) return;
     const x = t.clientX, y = t.clientY, dx = x - mouse.x, dy = y - mouse.y, dist = Math.hypot(dx, dy);
