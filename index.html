@@ -196,11 +196,11 @@
     transition: transform .7s cubic-bezier(.25, .1, .25, 1) calc(var(--i) * 40ms) !important; }
   .menu.on a, .menu.on button { transform: none; }
   /* 11/8: EASTARJET Heavy (이스타항공·윤디자인, 산돌구름 무료 서체 — 받은 파일 그대로) — 프로젝트 이름 '폼을 보아하니'에만. 나머지는 나눔스퀘어 라이트 */
-  @font-face { font-family: "EASTARJET"; src: url("fonts/EASTARJET-Heavy.otf") format("opentype"); font-weight: 900; font-display: swap; }
+  @font-face { font-family: "EASTARJET"; src: url("fonts/EASTARJET-Heavy.woff2") format("woff2"), url("fonts/EASTARJET-Heavy.otf") format("opentype");   /* 11/11: 자주 쓰는 한글 2,350자 + 사이트에 쓴 글자만 남긴 가벼운 파일(약 0.1MB) 먼저 */ font-weight: 900; font-display: swap; }
   .box-name .t, .b-name .t { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 900; }
   .box-name .t { font-size: var(--fs-xl); }
   /* 11/10: '탐색'·'아티클' 박스 이름도 제목 서체로, 한 단계 가벼운 Medium */
-  @font-face { font-family: "EASTARJET"; src: url("fonts/EASTARJET-Medium.otf") format("opentype"); font-weight: 500; font-display: swap; }
+  @font-face { font-family: "EASTARJET"; src: url("fonts/EASTARJET-Medium.woff2") format("woff2"), url("fonts/EASTARJET-Medium.otf") format("opentype");   /* 11/11: 자주 쓰는 한글 2,350자 + 사이트에 쓴 글자만 남긴 가벼운 파일(약 0.1MB) 먼저 */ font-weight: 500; font-display: swap; }
   .box-explore .t, .box-article .t { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 500; }   /* 11/8: 메인의 프로젝트 이름만 한 단계 크게 (25 → 40). 개요가 열려 2칸으로 좁아져도 한 줄에 들어감 */
 
   /* ═════════ 모바일 (11/10): 화면 폭 700px 이하 → 가로 3칸 (아이폰 앨범처럼) ═════════
@@ -1051,7 +1051,7 @@ addEventListener('scroll', () => {
    마우스가 지나가거나, 밀려나는 아이템이 지나간 자리에 열이 남고 서서히 식음 */
 const heat = (() => {
   let fastUntil = 0;
-  const S = 0.25;                       // 해상도 (화면의 1/4)
+  const S = MOBILE ? 0.4 : 0.25;   /* 11/11: 폰은 화면이 작아 1/4로 하면 흐릿하고 계단져 보임 → 0.4 */                       // 해상도 (화면의 1/4)
   const canvas = document.getElementById('heat');
   if (!CONFIG.heat) { canvas.remove(); return { track() {} }; }     // 히트맵 끈 버전: 빈 칸은 그냥 검정
   const ctx = canvas.getContext('2d');

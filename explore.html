@@ -204,11 +204,11 @@
     transition: transform .7s cubic-bezier(.25, .1, .25, 1) calc(var(--i) * 40ms) !important; }
   .menu.on a, .menu.on button { transform: none; }
   /* 11/8: EASTARJET Heavy (이스타항공·윤디자인, 산돌구름 무료 서체 — 받은 파일 그대로) — 프로젝트 이름 '폼을 보아하니'에만. 나머지는 나눔스퀘어 라이트 */
-  @font-face { font-family: "EASTARJET"; src: url("fonts/EASTARJET-Heavy.otf") format("opentype"); font-weight: 900; font-display: swap; }
+  @font-face { font-family: "EASTARJET"; src: url("fonts/EASTARJET-Heavy.woff2") format("woff2"), url("fonts/EASTARJET-Heavy.otf") format("opentype");   /* 11/11: 자주 쓰는 한글 2,350자 + 사이트에 쓴 글자만 남긴 가벼운 파일(약 0.1MB) 먼저 */ font-weight: 900; font-display: swap; }
   .box-name .t, .b-name .t { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 900; }
 
   /* 11/10: '탐색'·'아티클' 박스 이름도 제목 서체로, 한 단계 가벼운 Medium */
-  @font-face { font-family: "EASTARJET"; src: url("fonts/EASTARJET-Medium.otf") format("opentype"); font-weight: 500; font-display: swap; }
+  @font-face { font-family: "EASTARJET"; src: url("fonts/EASTARJET-Medium.woff2") format("woff2"), url("fonts/EASTARJET-Medium.otf") format("opentype");   /* 11/11: 자주 쓰는 한글 2,350자 + 사이트에 쓴 글자만 남긴 가벼운 파일(약 0.1MB) 먼저 */ font-weight: 500; font-display: swap; }
   .box-article .t, .box-explore .t, .b-art .t, .b-exp .t { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 500; }
   /* ═════════ 모바일 (11/10): 폭 700px 이하 → 가로 3칸, 글자는 일반적인 폰 크기 ═════════ */
   @media (max-width: 700px) {
@@ -226,19 +226,26 @@
   @media (max-width: 700px) {
     :root { --cell: calc(100vw / 3); }
     .row12 { grid-template-columns: repeat(3, var(--cell)); }
-    /* 맨 위 (11/11): 1줄 폼을 보아하니 2×1 + 탐색 1×1 / 2줄 동사 · 분야 · 검색 1칸씩 나란히 */
-    .top { height: auto; grid-auto-rows: var(--cell); }
-    .b-name   { grid-column: 1 / span 2; grid-row: 1; }
-    .b-exp    { grid-column: 3 / span 1; grid-row: 1; }
-    .b-verb   { grid-column: 1 / span 1; grid-row: 2; }
-    .b-field  { grid-column: 2 / span 1; grid-row: 2; }
-    .b-search { grid-column: 3 / span 1; grid-row: 2; }
+    /* 맨 위 (11/11): 한 줄로 — 폼을 보아하니 · 탐색(검색이 안에 들어간 한 박스) · 동사/분야(반 칸씩 위아래) */
+    .top { height: var(--cell); grid-template-rows: calc(var(--cell) / 2) calc(var(--cell) / 2); grid-auto-rows: calc(var(--cell) / 2); }
+    .b-name   { grid-column: 1 / span 1; grid-row: 1 / span 2; }
+    .b-name .t { font-size: 22px; line-height: 1.15; white-space: normal; word-break: keep-all; right: var(--gut); }   /* 한 칸이라 '폼을 / 보아하니' 두 줄 */
+    .b-name .s { font-size: 11px; line-height: 1.3; }
+    .b-exp    { display: none; }                                       /* 탐색 박스는 검색 박스가 대신함 */
+    .b-search { grid-column: 2 / span 1; grid-row: 1 / span 2; }
+    .b-search .t { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 500; font-size: 0; }
+    .b-search .t::before { content: '탐색'; font-size: var(--fs-l); }
     .b-search input { font-size: 12px; }
+    .b-verb   { grid-column: 3 / span 1; grid-row: 1; }
+    .b-field  { grid-column: 3 / span 1; grid-row: 2; }
+    .b-grp { height: auto !important; min-height: 0; }
+    .b-grp .t { font-size: 16px; top: 10px; }
+    .b-grp .s { bottom: 10px; font-size: 12px; }
     .b-grp .s { white-space: normal; max-width: calc(100% - 28px); text-align: right; justify-content: flex-end; flex-wrap: wrap; line-height: 1.3; }
     .picked { display: none; }                                         /* 고른 태그는 동사·분야 박스 안에 표시 */
     /* 하위 태그 (11/11): 사진을 밀어내지 않고, 메뉴처럼 박스 아래로 작게 내려옴 (사진 위에 떠 있음).
        스크롤하거나 다른 곳을 누르면 알아서 접힘 */
-    .panel { position: absolute; left: 0; right: 0; top: calc(var(--cell) * 2); height: auto !important; z-index: 30; overflow: visible;
+    .panel { position: absolute; left: 0; right: 0; top: var(--cell); height: auto !important; z-index: 30; overflow: visible;
              clip-path: inset(0 0 100% 0); transition: clip-path .35s var(--ease); pointer-events: none; }
     .panel.on { clip-path: inset(0 0 -20px 0); pointer-events: auto; filter: drop-shadow(0 2px 6px rgba(0,0,0,.28)); }
     .panel .tags.show, .t-b .panel .tags.show { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: none; grid-auto-flow: row; grid-auto-rows: 44px; grid-column: auto; overflow: visible; }
@@ -811,7 +818,7 @@ if (MOBILE) HEAT.heatCool = 0.993;                                // 11/11: 폰�
 /* ═════════ 히트맵 (메인과 같은 규칙: 마우스 · 움직이는 사진 · 스크롤) — 빈 곳(검정)으로만 보임 ═════════ */
 const heat = (() => {
   let fastUntil = 0;
-  const S = 0.25;                       // 해상도 (화면의 1/4)
+  const S = MOBILE ? 0.4 : 0.25;   /* 11/11: 폰은 화면이 작아 1/4로 하면 흐릿하고 계단져 보임 → 0.4 */                       // 해상도 (화면의 1/4)
   const canvas = document.getElementById('heat');
   if (!HEAT.heat) { canvas.remove(); return { track() {} }; }     // 히트맵 끈 버전: 빈 칸은 그냥 검정
   const ctx = canvas.getContext('2d');

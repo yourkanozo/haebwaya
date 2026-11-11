@@ -232,11 +232,11 @@
     transition: transform .7s cubic-bezier(.25, .1, .25, 1) calc(var(--i) * 40ms) !important; }
   .menu.on a, .menu.on button { transform: none; }
   /* 11/8: EASTARJET Heavy (이스타항공·윤디자인, 산돌구름 무료 서체 — 받은 파일 그대로) — 프로젝트 이름 '폼을 보아하니'에만. 나머지는 나눔스퀘어 라이트 */
-  @font-face { font-family: "EASTARJET"; src: url("fonts/EASTARJET-Heavy.otf") format("opentype"); font-weight: 900; font-display: swap; }
+  @font-face { font-family: "EASTARJET"; src: url("fonts/EASTARJET-Heavy.woff2") format("woff2"), url("fonts/EASTARJET-Heavy.otf") format("opentype");   /* 11/11: 자주 쓰는 한글 2,350자 + 사이트에 쓴 글자만 남긴 가벼운 파일(약 0.1MB) 먼저 */ font-weight: 900; font-display: swap; }
   .box-name .t, .b-name .t { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 900; }
 
   /* 11/10: '탐색'·'아티클' 박스 이름도 제목 서체로, 한 단계 가벼운 Medium */
-  @font-face { font-family: "EASTARJET"; src: url("fonts/EASTARJET-Medium.otf") format("opentype"); font-weight: 500; font-display: swap; }
+  @font-face { font-family: "EASTARJET"; src: url("fonts/EASTARJET-Medium.woff2") format("woff2"), url("fonts/EASTARJET-Medium.otf") format("opentype");   /* 11/11: 자주 쓰는 한글 2,350자 + 사이트에 쓴 글자만 남긴 가벼운 파일(약 0.1MB) 먼저 */ font-weight: 500; font-display: swap; }
   .box-article .t, .box-explore .t, .b-art .t, .b-exp .t { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 500; }
   /* ═════════ 모바일 (11/10): 폭 700px 이하 → 가로 3칸, 글자는 일반적인 폰 크기 ═════════ */
   @media (max-width: 700px) {
@@ -253,6 +253,11 @@
   }
   @media (max-width: 700px) {
     .box .s.ttl { white-space: normal; }
+    .box-name .t { font-size: 22px; line-height: 1.15; white-space: normal; word-break: keep-all; right: var(--gut); }   /* 한 칸이라 '폼을 / 보아하니' 두 줄 */
+    .box-name .s { font-size: 11px; line-height: 1.3; }
+    .b-search .t { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 500; font-size: 0; }
+    .b-search .t::before { content: '아티클'; font-size: var(--fs-l); }   /* 검색 박스가 아티클 박스를 겸함 */
+    .b-search input { font-size: 12px; }
     /* 11/11: 사진 로딩 — 폰에서는 단색 판이 한쪽으로 미끄러져 나가며 사진이 드러남 (clip-path 대신 transform → 사파리에서도 확실히 움직임) */
     .item { overflow: hidden; }
     .item::after { clip-path: none !important; transition: transform var(--reveal, .6s) var(--ease); }
@@ -398,7 +403,7 @@ const cellPx = () => innerWidth / COLS;
 const key = (r, c) => r * 100 + c;
 let items = [], boxEls = {}, colors = {}, holeEls = [];
 const setPos = (el, p) => { el._pos = p; el.style.gridColumn = `${p.c} / span ${p.w || 1}`; el.style.gridRow = p.r; };
-const ROW0 = MOBILE ? 4 : 3, ROW_GAP = 2;                       // 모바일은 맨 윗줄이 두 줄                                    // 첫 글 줄, 글 줄 간격(= 빈 줄 하나)
+const ROW0 = 3, ROW_GAP = 2;                                     // 모바일도 맨 윗줄은 한 줄 (11/11)                                    // 첫 글 줄, 글 줄 간격(= 빈 줄 하나)
 const SLOT = {};                                                // 글 번호 → { start, side } (한 번 정하면 그대로)
 const relOf = a => MOBILE ? a.rel.slice(0, 1) : a.rel;               // 모바일 (11/10): 글마다 제목 박스(1~2칸) + 대표 사진 1장만
 function slotFor(a) {
@@ -428,8 +433,9 @@ function buildTop() {
     if (b.tag === 'button') el.type = 'button';
     el.innerHTML = `<div class="box-in"></div>${b.html}`;
     paint(el, colors[b.id]);
-    /* 모바일 맨 윗줄 (11/11): 1줄 폼을 보아하니 2×1 + 아티클 1×1 / 2줄 정렬 1×1 + 검색 2×1 (아티클과 검색은 같은 색, 세로로 이어짐) */
-    const M = { name: { c: 1, r: 1, w: 2 }, article: { c: 3, r: 1, w: 1 }, sort: { c: 1, r: 2, w: 1 }, search: { c: 2, r: 2, w: 2 } };
+    /* 모바일 맨 윗줄 (11/11): 한 줄로 — 폼을 보아하니 · 아티클(검색이 안에 들어간 한 박스) · 정렬, 1칸씩 */
+    const M = { name: { c: 1, r: 1, w: 1 }, article: { c: 2, r: 1, w: 1 }, search: { c: 2, r: 1, w: 1 }, sort: { c: 3, r: 1, w: 1 } };
+    if (MOBILE && b.id === 'article') return;                    // 모바일: 아티클 박스는 검색 박스가 대신함 (제목 '아티클' + 편수 + 검색 칸)
     const rect = MOBILE ? { ...M[b.id], h: 1 } : { c: b.c, r: 1, w: b.w, h: b.h };
     place(el, rect);
     grid.appendChild(el);
@@ -625,7 +631,7 @@ document.addEventListener('click', e => { if (!e.target.closest('.menu, .fab')) 
 /* ═════════ 히트맵: 빈 칸으로만 보이는 열화상 ═════════
    마우스가 지나가거나, 밀려나는 아이템이 지나간 자리에 열이 남고 서서히 식음 */
 const heat = (() => {
-  const S = 0.25;                       // 해상도 (화면의 1/4)
+  const S = MOBILE ? 0.4 : 0.25;   /* 11/11: 폰은 화면이 작아 1/4로 하면 흐릿하고 계단져 보임 → 0.4 */                       // 해상도 (화면의 1/4)
   const canvas = document.getElementById('heat');
   if (!CONFIG.heat) { canvas.remove(); return { track() {} }; }     // 히트맵 끈 버전: 빈 칸은 그냥 검정
   const ctx = canvas.getContext('2d');
