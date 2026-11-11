@@ -1299,25 +1299,12 @@ const heat = (() => {
 </script>
 <script>
 /* 2026-10-17 공통: ① 새로고침하면 항상 그 페이지 맨 위에서 시작 (브라우저가 스크롤 자리를 기억하지 않게)
-   ② 아무 조작 없이 2분이 지나면 메인 화면 맨 위로 돌아감 (메인이면 맨 위로 올리고 열린 것들을 닫음) */
+   ② (11/11 뺌) 2분 자리 비움 → 메인 이동 */
 (() => {
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   addEventListener('load', () => scrollTo(0, 0));
   addEventListener('pageshow', e => { if (e.persisted) scrollTo(0, 0); });
-  if (matchMedia('(max-width: 700px)').matches) return;   // 11/10: 폰에서는 2분 자리 비움 → 메인 이동 안 함
-  const IDLE = 2 * 60 * 1000;
-  const home = () => { try { return sessionStorage.getItem('haebwaya-home') || 'index.html'; } catch (e) { return 'index.html'; } };
-  const onHome = () => { const f = location.pathname.split('/').pop() || 'index.html'; return f === home() || f.startsWith('index'); };
-  let t;
-  const goHome = () => {
-    if (!onHome()) { location.href = home(); return; }
-    try { if (typeof closeItem === 'function') closeItem(); if (typeof toggleOverview === 'function') toggleOverview(false); if (typeof toggleMenu === 'function') toggleMenu(false); } catch (e) {}
-    scrollTo({ top: 0, behavior: 'smooth' });
-    reset();
-  };
-  const reset = () => { clearTimeout(t); t = setTimeout(goHome, IDLE); };
-  ['pointermove', 'pointerdown', 'wheel', 'scroll', 'keydown', 'touchstart'].forEach(ev => addEventListener(ev, reset, { passive: true }));
-  reset();
+  /* 11/11: 2분 자리 비움 → 메인 이동은 뺌. 전시용 창(전시_시작.command)에서만 1분 뒤 메인으로 돌아감 */
 })();
 </script>
 <script>
