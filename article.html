@@ -169,7 +169,10 @@
     .pager .box { width: var(--cell); height: var(--cell); bottom: env(safe-area-inset-bottom); transition: transform .35s var(--ease); }
     .pager .box.left { transform: translateX(-100%); }
     .pager .box:not(.left) { transform: translateX(100%); }
-    body.pg-on .pager .box { transform: none; }
+    body.pg-on .pager .box, body.pg-end .pager .box { transform: none; }   /* 맨 아래까지 내리면 계속 보임 */
+    /* 메뉴도 평소엔 숨김 → 톡 치면 이전/다음과 함께 옆에서 나옴 (맨 아래에서도 보임) */
+    .dock { translate: 100% 0; transition: translate .35s var(--ease); }
+    body.pg-on .dock, body.pg-end .dock { translate: 0 0; }
     .pager .box .t { font-size: 14px; }
     .pager .box .s { font-size: 13px; }
     .fab, .menu a, .menu button { width: var(--cell) !important; height: 44px !important; padding: 0 var(--gut) !important; font-size: 14px; }
@@ -656,7 +659,7 @@ onScroll();
 document.addEventListener('click', e => { if (e.target.closest('#menu a:first-child')) { try { sessionStorage.setItem('ov-open', '1'); } catch (_) {} } }, true);
 </script>
 <script>
-/* 11/14 모바일: 이전 글 / 다음 글은 화면을 톡 치면 양옆에서 나오고, 스크롤하거나 다시 치면 들어감 */
+/* 11/14 모바일: 이전 글 / 다음 글·메뉴는 화면을 톡 치면 양옆에서 나오고, 스크롤하거나 다시 치면 들어감. 맨 아래에선 계속 보임 */
 (() => {
   if (!matchMedia('(max-width: 700px)').matches) return;
   document.addEventListener('click', e => {
@@ -664,7 +667,13 @@ document.addEventListener('click', e => { if (e.target.closest('#menu a:first-ch
     document.body.classList.toggle('pg-on');
   });
   let y = scrollY;
-  addEventListener('scroll', () => { if (Math.abs(scrollY - y) > 6) document.body.classList.remove('pg-on'); y = scrollY; }, { passive: true });
+  const atEnd = () => scrollY + innerHeight >= document.documentElement.scrollHeight - 8;   // 11/14: 맨 아래면 이전/다음·메뉴가 계속 나와 있음
+  const check = () => document.body.classList.toggle('pg-end', atEnd());
+  addEventListener('scroll', () => {
+    if (Math.abs(scrollY - y) > 6 && document.body.classList.contains('pg-on')) { document.body.classList.remove('pg-on'); try { toggleMenu(false); } catch (_) {} }
+    y = scrollY; check();
+  }, { passive: true });
+  addEventListener('load', check); addEventListener('resize', check);
 })();
 </script>
 </body>

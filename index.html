@@ -992,7 +992,8 @@ function buildOverview() {
   if (MOBILE) {                                                  // 모바일: 이름 박스는 그대로, 바로 아래에 화면 폭 전체 3×3으로 위에서 아래로 펼쳐짐
     ovEl.style.setProperty('--w', COLS); ovEl.style.setProperty('--h', 8);
     const pad = parseFloat(getComputedStyle(ovEl).paddingTop) || 0;
-    const hM = Math.min(5, Math.max(2, Math.ceil((ovText.scrollHeight + pad + 4) / cellPx())));   // 11/14: 글이 다 들어가는 만큼 (2~5칸)
+    const hM = 4;   // 11/14: 모바일 개요는 세로 4칸 (넘치면 칸 안에서 스크롤)
+    void pad;
     ovEl.style.setProperty('--h', hM);
     ovEl.style.setProperty('--c', 1); ovEl.style.setProperty('--r', rect.r + rect.h);
     ovEl.style.setProperty('--closed', 'inset(0 0 100% 0)');
