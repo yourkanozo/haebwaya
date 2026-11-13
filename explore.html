@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>탐색 — 폼을 보아하니</title>
+<link rel="icon" type="image/png" href="favicon.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">   <!-- 11/14: 탭 아이콘 (바탕 없이 검정 '폼'만) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/moonspam/NanumSquare@v2.0/nanumsquare.css">
 <style>
   /* ───────── 탐색 (web-rules.md 4-4) ─────────
@@ -40,7 +41,8 @@
   .box svg { width: calc(var(--u) * 16); height: calc(var(--u) * 16); }
   .b-name   { grid-column: 1 / span 2; }
   .b-exp    { grid-column: 3 / span 1; }                               /* 11/10: 폼을 보아하니 옆에 '탐색' 박스 (아티클 목차와 통일) */
-  .b-search { grid-column: 4 / span 3; cursor: text; }                 /* 탐색 박스 바로 옆, 같은 색 → 한 박스처럼 */
+  .b-search { grid-column: 6 / span 1; cursor: text; }   /* 11/14: 빈칸 없이 탐색 → 동사 → 분야 → 검색(맨 오른쪽) */                 /* 11/14: 한 칸으로, 맨 오른쪽 (폼을 보아하니 · 탐색 · 동사 · 분야 · 검색). 색은 탐색과 다르게 */
+  @media (min-width: 701px) { .box.b-search input { font-size: var(--fs-s); } }   /* 한 칸이라 입력 글자 작게 */
   .b-search .cnt b { font-weight: 300; }
   .b-search .cnt { position: absolute; right: var(--gut); top: var(--gut); font-size: var(--fs-s); line-height: 1; opacity: .7; }
   .b-search input { position: absolute; left: var(--gut); right: var(--gut); bottom: var(--gut); font-size: var(--fs-l); line-height: 1.2; outline: none; border-bottom: 1px solid currentColor; padding-bottom: calc(var(--u) * 6); }
@@ -88,11 +90,12 @@
               background: var(--grp); }   /* 외곽선 없음. 색 = 박스 색 그대로 (2026-10-14) */
   .t-b .tag span { position: absolute; left: calc(var(--u) * 16); top: calc(var(--u) * 14); }
   .t-b .tag i { position: absolute; right: calc(var(--u) * 16); bottom: calc(var(--u) * 14); }
-  .t-b .tag:hover { background: var(--grp-md); color: var(--grp-md-fg); }   /* 호버 = 조금 진하게 */
-  .t-b .tag.on { background: var(--grp-dk); color: var(--grp-dk-fg); }      /* 고름 = 더 진하게 (평소 → 호버 → 고름 순으로 진해짐) */
+  .t-b .tag[data-k] { background: var(--tg); color: var(--tg-fg); }   /* 11/14 평소 = 아주 연한 칸 */
+  .t-b .tag[data-k]:hover { background: color-mix(in srgb, var(--grp) 82%, #000); color: var(--grp-fg); }   /* 11/14 호버 = 박스 색보다 조금 진하게 (고른 것과 같음) */
+  .t-b .tag.on, .t-b .tag.on:hover { background: color-mix(in srgb, var(--grp) 82%, #000); color: var(--grp-fg); }   /* 11/14 고름 = 박스 색보다 조금 진하게 */
   .t-b .tag i { opacity: .7; }
   /* 항목 없는 태그: 같은 색을 훨씬 연하게 (못 누름). 투명도 없이 불투명한 색 → 아래 히트맵이 비치지 않음 */
-  .t-b .tag.zero { opacity: 1; background: var(--grp-lt); color: var(--grp-lt-fg); }   /* 해당 없음 = 더 연한 색 (불투명) */
+  .t-b .tag.zero, .t-b .tag.zero:hover { opacity: 1; background: var(--tg); color: color-mix(in srgb, var(--tg-fg) 25%, var(--tg)); }   /* 11/14 해당 없음 = 연한 칸 + 글자도 흐리게 (불투명) */
   .t-b .tag.zero i { opacity: .6; }
   .t-b .tag.head { background: var(--grp); color: var(--grp-fg); opacity: 1; }
   .t-b .tag.head span { left: var(--gut); top: var(--gut); font-size: var(--fs-l); line-height: 1; }
@@ -101,13 +104,13 @@
 
   /* ───── 동사·분야: 접어 두고, 누르면 그리드 안에서 펼쳐지며 사진들이 아래로 밀려남 (2026-10-14 시안) ───── */
   .b-grp { cursor: pointer; background: var(--grp); color: var(--grp-fg); }
-  .b-field { grid-column: 7 / span 1; }   /* 분야 → 동사 순 (2026-10-14) */
-  .b-verb  { grid-column: 8 / span 1; }
+  .b-verb  { grid-column: 4 / span 1; }
+  .b-field { grid-column: 5 / span 1; }
   .b-grp .s svg { transition: transform .3s var(--ease); }
   .b-grp.open .s svg { transform: rotate(180deg); }
   /* 고른 태그: 맨 윗줄 8~11칸에 작은 키로, 분야 → 동사 순 (누르면 해제). 초기화 없음 (2026-10-14) */
-  .picked { grid-column: 9 / span 4; display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, calc(var(--cell) / 2)); grid-auto-columns: var(--cell); overflow: hidden; }
-  .pk { position: relative; display: block; background: var(--grp); color: var(--grp-fg);   /* 동사·분야 박스와 같은 색 (2026-10-14) */ font-size: var(--fs-s); line-height: 1; cursor: pointer; }
+  .picked { grid-column: 7 / span 6; display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, calc(var(--cell) / 2)); grid-auto-columns: var(--cell); overflow: hidden; }
+  .pk { position: relative; display: block; background: color-mix(in srgb, var(--grp) 82%, #000);   /* 11/14: 고른 태그 칸도 박스보다 조금 진하게 */ color: var(--grp-fg);   /* 동사·분야 박스와 같은 색 (2026-10-14) */ font-size: var(--fs-s); line-height: 1; cursor: pointer; }
   .pk span { position: absolute; left: calc(var(--u) * 16); top: calc(var(--u) * 14); white-space: nowrap; }
   .pk i { position: absolute; right: calc(var(--u) * 16); bottom: calc(var(--u) * 14); font-style: normal; opacity: .7; }
   /* 펼쳐지는 태그 판 */
@@ -196,13 +199,13 @@
      햄버거 칸도 메뉴 칸과 같은 크기(1.5칸 × 반 칸)로 화면 오른쪽 끝에 붙어, 옆에서 밀려 나옴.
      누르면 홈·아티클·탐색 칸이 그 아래로 하나씩 옆에서 밀려 나와 이어짐 */
   .dock { right: 0 !important; }
-  .fab { width: calc(var(--cell) * 1.5) !important; justify-content: flex-start !important; padding: 0 var(--gut) !important;
+  .fab { width: calc(var(--cell) * 2) !important;   /* 11/14: 메뉴 가로 두 칸 */ justify-content: flex-start !important; padding: 0 var(--gut) !important;
          clip-path: none !important; transform: translateX(100%); transition: transform .5s var(--ease) !important; }
   .fab.show { transform: none; }
   /* 2026-10-17: 메뉴 칸은 햄버거 칸 밑에서 아래로 펼쳐짐 — 사진이 밀려 내려가는 움직임과 같음 (같은 곡선·0.7초·칸마다 0.04초 차례) */
   .fab { position: relative; z-index: 2; }
   .menu { align-items: flex-end !important; position: relative; z-index: 1; overflow: hidden; }
-  .menu a, .menu button { width: calc(var(--cell) * 1.5) !important; height: calc(var(--cell) / 2) !important;
+  .menu a, .menu button { width: calc(var(--cell) * 2) !important; height: calc(var(--cell) / 2) !important;
     clip-path: none !important; position: relative; z-index: calc(10 - var(--i)); transform: translateY(calc(-100% * (var(--i) + 1)));   /* 위 칸이 아래 칸을 덮은 채로 차례로 펼쳐짐 */
     transition: transform .7s cubic-bezier(.25, .1, .25, 1) calc(var(--i) * 40ms) !important; }
   .menu.on a, .menu.on button { transform: none; }
@@ -264,6 +267,11 @@
     .info .desc { display: none; }                                     /* 설명 창 2×1: 이름·동사·분야만 */
     .info .name { margin-top: 6px; }
   }
+  .empty-msg { position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%); margin: 0; padding: 0; color: #fff; opacity: 1; font-size: var(--fs-s); line-height: 1; white-space: nowrap; pointer-events: none; z-index: 3; }   /* 11/14: 결과가 없을 때 — 흰 글씨, 화면 가운데 살짝 위 */
+  .menu a.here { cursor: default; }   /* 11/14: 지금 있는 페이지 메뉴 칸 */
+  .menu a:first-child span { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 900; }   /* 11/14: 메뉴 '폼을 보아하니'는 제목 서체 */
+  .menu a:not(:first-child) span { font-weight: 700; }   /* 탐색·아티클은 굵게 */
+  @media (min-width: 701px) { .menu a span { font-size: var(--fs-l); } }   /* 11/14: 메뉴 글자 키움 (데스크톱) */
 </style>
 <script src="images/colors.js"></script>
 <script src="images/sheet_data.js"></script>   <!-- 인터넷이 안 될 때 쓰는 시트 사본 (시트_업데이트.command로 갱신) -->   <!-- 사진별 평균색 (없으면 임시 색) -->
@@ -328,8 +336,32 @@ async function loadSheet() {
   return out.sort((a, b) => a.id.localeCompare(b.id));
 }
 
-/* ═════════ 공통 ═════════ */
-const PALETTE = ['#344164','#664f3b','#942d40','#9f681f','#7b6182','#d55d26','#c25a6d','#758cb5','#c7935b','#e7bf92','#cfc9c3','#fcefd8'];
+/* 박스 팔레트: images/colors.js에 정한 사진별 색(174색) 중에서 랜덤 (2026-11-14). colors.js가 없으면 예전 12색 */
+const PALETTE = (() => { const c = [...new Set(Object.values(window.IMAGE_COLORS || {}).map(s => s.toLowerCase()))]; return c.length ? c : ['#344164', '#664f3b', '#942d40', '#9f681f', '#7b6182', '#d55d26', '#c25a6d', '#758cb5', '#c7935b', '#e7bf92', '#cfc9c3', '#fcefd8']; })();
+
+/* 색 계열 (2026-11-14): 빨·주·노·초·파·남·보 + 무채색(어두움/밝음). 한 화면의 박스들은 되도록 서로 다른 계열에서 뽑음 */
+const hueFamily = c => {
+  const [r, g, b] = (c.startsWith('#') ? [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)) : c.match(/\d+/g).map(Number)).map(v => v / 255);
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  if (d < 0.12) return (mx + mn) / 2 < 0.5 ? 'k' : 'w';                 // 채도가 거의 없으면 무채색
+  let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h = (h * 60 + 360) % 360;
+  return h < 15 || h >= 345 ? 'R' : h < 40 ? 'O' : h < 70 ? 'Y' : h < 165 ? 'G' : h < 235 ? 'B' : h < 265 ? 'N' : 'V';
+};
+/* 계열을 한 바퀴씩 돌며 뽑은 팔레트: 앞쪽 몇 개는 모두 다른 계열 */
+function spreadPalette() {
+  const sh = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const groups = {}; PALETTE.forEach(c => (groups[hueFamily(c)] ||= []).push(c));
+  const fams = sh(Object.keys(groups)); fams.forEach(f => sh(groups[f]));
+  const out = []; for (let k = 0; out.length < PALETTE.length; k++) fams.forEach(f => { if (groups[f][k]) out.push(groups[f][k]); });
+  return out;
+}
+/* 이미 쓴 색들과 계열이 다른 색 하나 (없으면 안 쓴 색 아무거나) */
+function pickAway(used) {
+  const u = used.filter(Boolean).map(c => c.toLowerCase()), uf = new Set(u.map(hueFamily));
+  let free = PALETTE.filter(c => !u.includes(c.toLowerCase()) && !uf.has(hueFamily(c)));
+  if (!free.length) free = PALETTE.filter(c => !u.includes(c.toLowerCase()));
+  return free[Math.floor(Math.random() * free.length)];
+}
 const ARROW = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M1 8h13M9 3l5 5-5 5"/></svg>';
 const DOWN = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="m3 6 5 5 5-5"/></svg>';
 const UP = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M8 14V2M2 8l6-6 6 6"/></svg>';
@@ -344,8 +376,18 @@ const toHsl = h => { let [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 
 const fromHsl = (h, s, l) => { h = ((h % 360) + 360) % 360; const k = n => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = n => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
   return '#' + [0, 8, 4].map(n => Math.round(f(n) * 255).toString(16).padStart(2, '0')).join(''); };
 const clamp01 = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
-const variantOf = (base, i) => { const [h, s, l] = toHsl(base);                  // 같은 색상 안에서 채도·명도만 조금씩 (태그 순서로 정해져 늘 같음)
-  return fromHsl(h, clamp01(s + ((i * 53) % 29 - 14) / 100, .06, .95), clamp01(l + ((i * 29) % 23 - 11) / 100, .12, .9)); };   // 색상(hue)은 그대로, 채도·명도만 (10/17)
+/* 11/14: 칸이 확 보이게 — 같은 색상(hue) 안에서 명도를 5단계로 뚜렷하게 나눔. 태그 순서로 정해져 늘 같고, 위아래·옆 칸끼리 단계가 겹치지 않게 */
+const LSTEP = [-.16, -.08, 0, .08, .16];
+const variantOf = (base, i) => { const [h, s, l] = toHsl(base);
+  return fromHsl(h, s, clamp01(l + LSTEP[(i * 2) % 5], .1, .88)); };
+/* 11/14: 하위 태그 — 평소엔 박스 색을 아주 연하게(어두운 색은 흰색 쪽으로, 밝은 색은 검정 쪽으로 75%), 칸끼리는 아주 조금씩만 달라 경계만 보임.
+   호버·고르면 박스 색 그대로, 해당 없으면 연한 칸에 글자까지 흐리게 */
+const TSTEP = [0, .05, -.03, .03, -.05];
+const setTag = (el, c, i) => {
+  const light = fgOf(c) === '#000';
+  const pale = mixHex(c, light ? '#000000' : '#ffffff', .75 + TSTEP[(i * 2) % 5]);
+  [['--grp', c], ['--grp-fg', fgOf(c)], ['--tg', pale], ['--tg-fg', fgOf(pale)]].forEach(([k, v]) => el.style.setProperty(k, v));
+};
 const setGrp = (el, c) => {                                      // 태그 색: 박스 색 / 진하게(호버·고름) / 연하게(해당 없음)
   const md = mixHex(c, '#000000', .25), dk = mixHex(c, '#000000', .5), lt = mixHex(c, '#ffffff', .6);
   [['--grp', c], ['--grp-fg', fgOf(c)], ['--grp-md', md], ['--grp-md-fg', fgOf(md)], ['--grp-dk', dk], ['--grp-dk-fg', fgOf(dk)], ['--grp-lt', lt], ['--grp-lt-fg', mixHex(lt, '#000000', .45)]].forEach(([k, v]) => el.style.setProperty(k, v));
@@ -356,8 +398,15 @@ const homeUrl = () => { try { return sessionStorage.getItem('haebwaya-home') || 
 const ko = (a, b) => a.localeCompare(b, 'ko');
 const TV = new URLSearchParams(location.search).get('t') || 'b';   // 태그 디자인 시안
 document.body.classList.add('t-' + TV);
-const pal = shuffle(PALETTE.slice());
-const C = { name: pal[0], art: pal[1], search: pal[2], verb: pal[5], field: pal[6] };
+const pal = spreadPalette();
+/* 11/14: 동사·분야 박스는 어두운 색만 (밝기 45~110) — 하위 태그를 연하게 깔았을 때 어두운 바탕색일 때가 예쁨.
+   너무 검으면 바탕에 묻히니 45 이상. 서로 다른 계열로 고르고, 없으면 검정을 섞어 어둡게 */
+const lumOf = c => { const [r, g, b] = [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)); return (r * 299 + g * 587 + b * 114) / 1000; };
+const darkPick = (skip, avoidFam) => pal.find(c => !skip.includes(c) && lumOf(c) >= 45 && lumOf(c) <= 110 && hueFamily(c) !== avoidFam);
+const toDark = c => { const l = lumOf(c); return l <= 110 ? c : mixHex(c, '#000000', 1 - 95 / l); };
+const C = { name: pal[0], art: pal[1], search: pal[2] };
+C.verb  = darkPick([C.name, C.art, C.search]) || toDark(pal[5]);
+C.field = darkPick([C.name, C.art, C.search, C.verb], hueFamily(C.verb)) || darkPick([C.name, C.art, C.search, C.verb]) || toDark(pal[6]);
 
 /* ═════════ 상태 ═════════ */
 let ITEMS = [], VERBS = [], FIELDS = [];
@@ -371,28 +420,35 @@ const topEl = document.getElementById('top');
 topEl.innerHTML =
   `<a class="box b-name" href="${homeUrl()}" style="--delay:0s"><span class="t">폼을 보아하니</span><span class="s">interface archiving</span></a>` +
   `<div class="box b-exp"><span class="t">탐색</span><span class="s" id="tot">–</span></div>` +
-  `<label class="box b-search" style="--delay:.09s"><span class="t">검색</span><span class="cnt"><b id="cnt">–</b>개</span><input id="q" type="search" placeholder="이름, 원리, 동사" autocomplete="off"></label>` +
-  `<button class="box b-grp b-field" id="gField" type="button" data-g="fields"><span class="t">분야</span><span class="s">단일 선택 ${DOWN}</span></button>` +
   `<button class="box b-grp b-verb" id="gVerb" type="button" data-g="verbs"><span class="t">동사</span><span class="s">복수 선택 ${DOWN}</span></button>` +
+  `<button class="box b-grp b-field" id="gField" type="button" data-g="fields"><span class="t">분야</span><span class="s">단일 선택 ${DOWN}</span></button>` +
+  `<label class="box b-search" style="--delay:.09s"><span class="t">검색</span><input id="q" type="search" placeholder="이름, 동사, 분야" autocomplete="off"></label>` +
   `<div class="picked" id="picked"></div>`;
-paint(topEl.querySelector('.b-name'), C.name); paint(topEl.querySelector('.b-search'), C.search); paint(topEl.querySelector('.b-exp'), C.search);   // 11/10: 탐색 박스와 검색은 같은 색
+paint(topEl.querySelector('.b-name'), C.name); paint(topEl.querySelector('.b-search'), C.search); paint(topEl.querySelector('.b-exp'), MQ.matches ? C.search : C.art);   // 11/14: 데스크톱은 탐색·검색 색을 다르게 (폰은 검색 박스가 탐색을 겸해서 같은 색)
 [['#gVerb', C.verb], ['#gField', C.field]].forEach(([q, c]) => setGrp(topEl.querySelector(q), c));
 
 /* 메뉴 */
 const fab = document.getElementById('fab'), menu = document.getElementById('menu');
+/* 11/14: 메뉴 칸은 검정에 가까운 색이면 밝게 올림 (바탕이 검정이라 안 보임) — 밝기(0~255) 90 미만이면 흰색을 섞어 90까지 */
+const liftDark = c => { const v = c.startsWith('#') ? [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)) : (c.match(/\d+/g) || [0, 0, 0]).map(Number);
+  const lum = (v[0] * 299 + v[1] * 587 + v[2] * 114) / 1000; if (lum >= 90) return c;
+  const t = (90 - lum) / (255 - lum); return '#' + v.map(x => Math.round(x + (255 - x) * t).toString(16).padStart(2, '0')).join(''); };
 paint(fab, C.name);
+/* 11/14: 모든 페이지 메뉴 = 홈 · 탐색 · 아티클(목차) */
 [
-  { label: '홈', color: C.name, href: homeUrl() },
-  { label: '아티클', color: C.art, href: 'articles.html' },
+  { label: '폼을 보아하니', color: C.name, href: homeUrl() },
+  { label: '탐색', color: C.art },
+  { label: '아티클', color: pal[3], href: 'articles.html' },
 ].forEach((m, i) => {
-  const el = document.createElement(m.href ? 'a' : 'button');
-  if (m.href) el.href = m.href;
-  el.innerHTML = `<span>${m.label}</span>${m.href ? ARROW : m.icon}`;
-  el.style.setProperty('--i', i); paint(el, m.color);
-  el.addEventListener('click', () => { toggleMenu(false); m.act && m.act(); });
+  const el = document.createElement('a');
+  if (m.href) el.href = m.href; else el.classList.add('here');   // 11/14: 지금 있는 곳은 눌러도 그대로
+  el.innerHTML = `<span>${m.label}</span>`;                        // 11/14: 메뉴 화살표 없앰
+  el.style.setProperty('--i', i);
+  paint(el, liftDark(m.color));
+  if (m.href) el.addEventListener('click', () => toggleMenu(false));
   menu.appendChild(el);
 });
-  { const used = [...menu.children].map(e => e.style.getPropertyValue('--bg').toLowerCase()); const free = PALETTE.filter(c => !used.includes(c.toLowerCase())); paint(fab, free[Math.floor(Math.random() * free.length)]); }   // 햄버거 칸은 메뉴 칸들과 다른 색 → 탭끼리 구분됨 (2026-10-15)
+  { const used = [...menu.children].map(e => e.style.getPropertyValue('--bg').toLowerCase()); paint(fab, liftDark(pickAway(used))); }   // 햄버거 칸은 메뉴 칸들과 다른 색 → 탭끼리 구분됨 (2026-10-15)
 if (!MOBILE) fab.classList.add('show');                         // 탐색: 메뉴 칸은 처음부터 (옆에서 밀려 나옴)
 else addEventListener('scroll', () => { const v = scrollY > cellPx() / 2; fab.classList.toggle('show', v); if (!v) toggleMenu(false); }, { passive: true });   // 모바일: 맨 위 탐색 박스를 가리지 않게 스크롤하면 나옴
 function toggleMenu(on) { const v = menu.classList.toggle('on', on ?? !menu.classList.contains('on')); fab.classList.toggle('open', v); }   // 메뉴는 사진 위에 떠 있어서 히트맵 없음
@@ -402,14 +458,14 @@ document.addEventListener('click', e => { if (!e.target.closest('.menu, .fab')) 
 /* ═════════ 태그 판 ═════════ */
 const panel = document.getElementById('panel');
 function buildPanel() {
-  const tag = (k, v) => `<button class="tag" data-k="${k}" data-v="${esc(v)}" type="button"><span>${k === 'verbs' ? '#' : ''}${esc(v)}</span><i></i></button>`;
+  const tag = (k, v) => `<button class="tag" data-k="${k}" data-v="${esc(v)}" type="button"><span>${esc(v)}</span><i></i></button>`;
   /* 키는 2개씩 위→아래로 쌓고 오른쪽 열로 (12칸을 넘으면 한 열의 키를 2개씩 늘림 → 판이 칸 단위로 길어짐) */
   const rowsFor = n => MOBILE ? 4 : 2 * Math.max(1, Math.ceil(n / 24));   // 모바일: 4줄(2칸 높이)로 쌓고 옆으로 넘김
   panel.dataset.layout = 'fold';
   panel.innerHTML =
     `<div class="tags verbs" style="--rows:${rowsFor(VERBS.length)}">${VERBS.map(v => tag('verbs', v)).join('')}</div>` +
     `<div class="tags fields" style="--rows:${rowsFor(FIELDS.length)}">${FIELDS.map(v => tag('field', v)).join('')}</div>`;
-  [['.tags.verbs', C.verb], ['.tags.fields', C.field]].forEach(([q, c]) => { const g = panel.querySelector(q); setGrp(g, c); [...g.querySelectorAll('.tag')].forEach((t, i) => setGrp(t, variantOf(c, i))); });
+  [['.tags.verbs', C.verb], ['.tags.fields', C.field]].forEach(([q, c]) => { const g = panel.querySelector(q); setGrp(g, c); [...g.querySelectorAll('.tag')].forEach((t, i) => setTag(t, c, i)); });
   panel.querySelectorAll('.tag[data-k]').forEach(b => b.addEventListener('click', () => {
     const v = b.dataset.v;
     if (b.dataset.k === 'verbs') sel.verbs.has(v) ? sel.verbs.delete(v) : sel.verbs.add(v);
@@ -490,7 +546,7 @@ const fgSolid = c => { const [r, g, b] = rgbOf(c); return (r * 299 + g * 587 + b
 function layoutResults(hits) {
   items = hits.map(cellFor);
   items.forEach((el, i) => { el._home = { r: Math.floor(i / COLS) + 1, c: i % COLS + 1 }; setPos(el, el._home); });
-  results.replaceChildren(...(items.length ? items : [Object.assign(document.createElement('p'), { className: 'msg', textContent: '맞는 인터페이스가 없어요.' })]));
+  results.replaceChildren(...(items.length ? items : [Object.assign(document.createElement('p'), { className: 'empty-msg', textContent: '아무것도 보이지 않습니다.' })]));
 }
 function regionAt(item) {
   const { r: r0, c: c0 } = item._home;
@@ -537,7 +593,7 @@ function openItem(el) {
     infoEl.style.setProperty('--solid', solid);
     infoEl.style.setProperty('--fg', fgSolid(solid));
     infoEl.innerHTML = `<span class="code">${esc(it.id)}</span><span class="name">${esc(it.name || '이름 (미정)')}</span>` +
-      `<p class="desc">${esc(it.principle)}</p><dl><dt>동사</dt><dd>${it.verbs.map(v => '#' + esc(v)).join(' ') || '—'}</dd><dt>분야</dt><dd>${esc(it.field)}</dd></dl>`;
+      `<p class="desc">${esc(it.principle)}</p><dl><dt>동사</dt><dd>${it.verbs.map(v => esc(v)).join(', ') || '—'}</dd><dt>분야</dt><dd>${esc(it.field)}</dd></dl>`;
     placeEl(infoEl, spot.info);
     el.after(infoEl);
   }, { focus: el, opening: true, switching });
@@ -721,8 +777,8 @@ const sum = document.getElementById('sum');
 paint(sum, C.name);
 function update(swap = false) {
   const hits = ITEMS.filter(it => fits(it, sel));
-  document.getElementById('cnt').textContent = hits.length;
-  document.getElementById('tot').textContent = ITEMS.length + '개';
+  const cn = document.getElementById('cnt'); if (cn) cn.textContent = hits.length;   // 11/14: 검색 박스의 개수는 뺌 (없으면 건너뜀)
+  document.getElementById('tot').textContent = hits.length + '개';   // 11/14: 탐색 박스 숫자 = 지금 화면에 보이는(고른 조건에 맞는) 개수
   /* 태그: 고른 건 색 박스, 숫자 = 이걸 (더) 고르면 남는 개수, 0이면 흐리게 */
   panel.querySelectorAll('.tag[data-k]').forEach(b => {
     const v = b.dataset.v, on = b.dataset.k === 'verbs' ? sel.verbs.has(v) : sel.field === v;
@@ -742,12 +798,12 @@ function update(swap = false) {
   const any = sel.verbs.size || sel.field || sel.q;
   if (MOBILE) {                                                  // 모바일: 고른 태그를 동사·분야 박스 아래쪽에 (따로 줄을 두지 않음)
     const vs = [...sel.verbs];
-    document.querySelector('#gVerb .s').innerHTML = (vs.length ? esc('#' + vs[0]) + (vs.length > 1 ? ` 외 ${vs.length - 1}` : '') : '복수 선택') + ' ' + DOWN;
+    document.querySelector('#gVerb .s').innerHTML = (vs.length ? esc(vs[0]) + (vs.length > 1 ? ` 외 ${vs.length - 1}` : '') : '복수 선택') + ' ' + DOWN;
     document.querySelector('#gField .s').innerHTML = (sel.field ? esc(sel.field) : '단일 선택') + ' ' + DOWN;
   }
   /* 맨 윗줄: 고른 태그를 작은 키로 (누르면 해제) */
   const picked = document.getElementById('picked');
-  const pk = (k, v, c) => `<button class="pk" type="button" data-k="${k}" data-v="${esc(v)}" style="--grp:${c};--grp-fg:${fgOf(c)}"><span>${k === 'verbs' ? '#' : ''}${esc(v)}</span><i>×</i></button>`;
+  const pk = (k, v, c) => `<button class="pk" type="button" data-k="${k}" data-v="${esc(v)}" style="--grp:${c};--grp-fg:${fgOf(c)}"><span>${esc(v)}</span><i>×</i></button>`;
   picked.innerHTML = (sel.field ? pk('field', sel.field, C.field) : '') + [...sel.verbs].map(v => pk('verbs', v, C.verb)).join('');   // 분야 → 동사 순
   picked.querySelectorAll('.pk').forEach(b => b.addEventListener('click', () => {
     if (b.dataset.k === 'verbs') sel.verbs.delete(b.dataset.v); else sel.field = null;
@@ -1116,19 +1172,24 @@ const heat = (() => {
     const href = a.getAttribute('href'); if (!href || href.startsWith('#')) return;
     /* 11/7: 일반 박스는 아무것도 접히지 않고 바로 이동 (아티클 목차 줄·메뉴만 따로 움직임) */
   });
-  /* 메뉴 (11/7): 누른 칸이 맨 위 칸 자리로 올라오고, 나머지 칸은 내려왔던 길 그대로 위로 접혀 올라간 뒤 이동 */
+  /* 메뉴 (11/14): 누른 칸의 색이 메뉴 칸들을 덮은 뒤 이동 (메뉴는 접지 않음) */
   document.addEventListener('click', e => {
     const a = e.target.closest('#menu a[href]');
     if (!a || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault(); e.stopPropagation();
     if (a._leaving) return; a._leaving = true;
-    const m = document.getElementById('menu'), f = document.getElementById('fab');
-    const i = m ? [...m.children].indexOf(a) : 0, n = m ? m.children.length : 3;
-    a.style.zIndex = 20;
-    a.style.transform = `translateY(${-100 * i}%)`;                         // 맨 위 칸 자리로
-    if (m) m.classList.remove('on'); if (f) f.classList.remove('open');
-    setTimeout(() => { location.href = a.href; }, 700 + n * 40 + 60);
+    /* 11/14 고침: 화면 전체가 아니라 메뉴 칸들(햄버거 칸 + 메뉴 칸)만 누른 칸 색으로 덮임 — 누른 칸에서 위아래로 번짐 */
+    const cells = [document.getElementById('fab'), ...document.querySelectorAll('#menu a, #menu button')].filter(Boolean).map(x => x.getBoundingClientRect());
+    const L = Math.min(...cells.map(q => q.left)), T = Math.min(...cells.map(q => q.top)), R = Math.max(...cells.map(q => q.right)), B = Math.max(...cells.map(q => q.bottom));
+    const r = a.getBoundingClientRect();
+    const c = document.createElement('div'); c.className = 'menu-cover';
+    c.style.cssText = `position:fixed; left:${L}px; top:${T}px; width:${R - L}px; height:${B - T}px; z-index:1000; pointer-events:none; background:${getComputedStyle(a).backgroundColor}`;
+    document.body.appendChild(c);
+    c.animate([{ clipPath: `inset(${r.top - T}px 0px ${B - r.bottom}px 0px)` }, { clipPath: 'inset(0px 0px 0px 0px)' }],
+              { duration: 380, easing: 'cubic-bezier(.4, 0, .2, 1)', fill: 'forwards' });
+    setTimeout(() => { location.href = a.href; }, 460);
   }, true);
+  addEventListener('pageshow', e => { if (e.persisted) document.querySelectorAll('.menu-cover').forEach(x => x.remove()); });
   addEventListener('pageshow', e => {                                         // 뒤로가기로 돌아왔을 때 접힌 채로 남지 않게
     if (!e.persisted) return;
     document.getAnimations().forEach(x => x.cancel());
@@ -1169,6 +1230,10 @@ const heat = (() => {
     document.querySelectorAll('a.box').forEach(b => { b._leaving = false; });
   });
 })();
+</script>
+<script>
+/* 11/14: 메뉴의 '폼을 보아하니' → 메인으로 가서 개요가 저절로 열림 (표시만 남기고 이동은 메뉴 덮기가 함) */
+document.addEventListener('click', e => { if (e.target.closest('#menu a:first-child')) { try { sessionStorage.setItem('ov-open', '1'); } catch (_) {} } }, true);
 </script>
 </body>
 </html>
