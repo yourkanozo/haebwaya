@@ -32,6 +32,7 @@
 
   /* ───────── 히트맵: 화면에 고정된 캔버스. 아이템·박스 아래에 깔려서 빈 칸으로만 보임 ───────── */
   #heat { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; }
+  @media (min-width: 701px) { #heat { filter: blur(2px); } }   /* 11/14: 작은 해상도를 키울 때 생기는 계단을 살짝 뭉갬 */
 
   /* ───────── 그리드 ─────────
      박스·빈 칸은 자리를 지정, 아이템은 남은 칸을 왼쪽 위부터 순서대로 채움 */
@@ -258,7 +259,8 @@
   }
   .ov-text b { font-weight: 400; }   /* 11/14: 개요 속 '탐색'·'아티클' — 본문(라이트 300)보다 한 단계만 굵게 */
   .ov-text b.ov-name { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 500; }   /* '폼을 보아하니'는 제목 서체 미디엄 */
-  .ov-text { max-width: 25em; line-height: calc(var(--lh-s) * 1.15); }   /* 11/14: 글 폭은 둘째 문장 한 줄 정도로 좁게, 행간 조금 넓게 */
+  @media (min-width: 701px) { .ov-text { max-width: 25em; line-height: calc(var(--lh-s) * 1.15); } }   /* 11/14: 글 폭은 둘째 문장 한 줄 정도로 좁게, 행간 조금 넓게 (데스크톱) */
+  @media (max-width: 700px) { .ov-text { max-width: 21em; line-height: calc(var(--lh-s) * 1.15); } }   /* 11/14: 모바일도 — 가장 긴 줄이 들어가는 폭까지만, 행간 조금 넓게 */
   .menu a.here { cursor: default; }   /* 11/14: 지금 있는 페이지 메뉴 칸 */
   .menu a:first-child span { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 900; }   /* 11/14: 메뉴 '폼을 보아하니'는 제목 서체 */
   .menu a:not(:first-child) span { font-weight: 700; }   /* 탐색·아티클은 굵게 */
@@ -988,11 +990,14 @@ function buildOverview() {
   const toRight = rect.c + nw + w - 1 <= COLS;                  // 되도록 오른쪽 (이름 박스가 왼쪽에 있으므로)
   nameEl.style.setProperty('--w0', rect.w); nameEl.style.setProperty('--h0', rect.h);
   if (MOBILE) {                                                  // 모바일: 이름 박스는 그대로, 바로 아래에 화면 폭 전체 3×3으로 위에서 아래로 펼쳐짐
-    ovEl.style.setProperty('--w', COLS); ovEl.style.setProperty('--h', 2);   // 11/10: 세로 두 칸만
+    ovEl.style.setProperty('--w', COLS); ovEl.style.setProperty('--h', 8);
+    const pad = parseFloat(getComputedStyle(ovEl).paddingTop) || 0;
+    const hM = Math.min(5, Math.max(2, Math.ceil((ovText.scrollHeight + pad + 4) / cellPx())));   // 11/14: 글이 다 들어가는 만큼 (2~5칸)
+    ovEl.style.setProperty('--h', hM);
     ovEl.style.setProperty('--c', 1); ovEl.style.setProperty('--r', rect.r + rect.h);
     ovEl.style.setProperty('--closed', 'inset(0 0 100% 0)');
     nameEl.style.setProperty('--grow', 0); nameEl.style.setProperty('--grow-w', 0);
-    ovRegion = { c: 1, r: rect.r + rect.h, w: COLS, h: 2 };
+    ovRegion = { c: 1, r: rect.r + rect.h, w: COLS, h: hM };
   } else {
   ovEl.style.setProperty('--w', w); ovEl.style.setProperty('--h', h);
   ovEl.style.setProperty('--c', toRight ? rect.c + nw : rect.c - w);
@@ -1125,7 +1130,8 @@ addEventListener('scroll', () => {
    마우스가 지나가거나, 밀려나는 아이템이 지나간 자리에 열이 남고 서서히 식음 */
 const heat = (() => {
   let fastUntil = 0;
-  const S = MOBILE ? 0.4 : 0.25;   /* 11/11: 폰은 화면이 작아 1/4로 하면 흐릿하고 계단져 보임 → 0.4 */                       // 해상도 (화면의 1/4)
+  const S = MOBILE ? 0.4 : 0.33;   /* 11/11: 폰 0.4 / 11/14: 데스크톱도 1/4 → 1/3 (계단져 보이던 것 보완) */
+  const SPREAD = CONFIG.heatSpread * (MOBILE ? 1 : (0.33 / 0.25) ** 2);   // 11/14: 해상도를 올려도 화면에서 퍼지는 정도는 예전과 같게
   const canvas = document.getElementById('heat');
   if (!CONFIG.heat) { canvas.remove(); return { track() {} }; }     // 히트맵 끈 버전: 빈 칸은 그냥 검정
   const ctx = canvas.getContext('2d');
@@ -1264,7 +1270,7 @@ const heat = (() => {
       const k = j * fw + i;
       const l = i > 0 ? T[k - 1] : T[k], r = i < fw - 1 ? T[k + 1] : T[k];
       const u = j > 0 ? T[k - fw] : T[k], d = j < fh - 1 ? T[k + fw] : T[k];
-      B[k] = (T[k] * (1 - 4 * CONFIG.heatSpread) + (l + r + u + d) * CONFIG.heatSpread) * (fastNow ? CONFIG.heatCoolFast : T[k] < CONFIG.heatEmber ? 1 - (1 - CONFIG.heatCool) * .4 : CONFIG.heatCool);   // 옅게 남은 열(잔열)은 더 천천히 식음
+      B[k] = (T[k] * (1 - 4 * SPREAD) + (l + r + u + d) * SPREAD) * (fastNow ? CONFIG.heatCoolFast : T[k] < CONFIG.heatEmber ? 1 - (1 - CONFIG.heatCool) * .4 : CONFIG.heatCool);   // 옅게 남은 열(잔열)은 더 천천히 식음
       if (B[k] > max) max = B[k];
     }
     [T, B] = [B, T];
@@ -1278,7 +1284,7 @@ const heat = (() => {
     }
     sctx.putImageData(img, 0, 0);
     ctx.clearRect(0, 0, W, H);
-    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';   // 11/14: 키울 때 부드럽게
     ctx.drawImage(small, 0, 0, W, H);
     if (max < 0.004 && !movers.size && !mouse.trail.length && !dyScroll && !touch.on) { T.fill(0); ctx.clearRect(0, 0, W, H); running = false; return; }
     requestAnimationFrame(frame);

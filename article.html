@@ -143,6 +143,41 @@
   .menu a:first-child span { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 900; }   /* 11/14: 메뉴 '폼을 보아하니'는 제목 서체 */
   .menu a:not(:first-child) span { font-weight: 700; }   /* 탐색·아티클은 굵게 */
   @media (min-width: 701px) { .menu a span { font-size: var(--fs-l); } }   /* 11/14: 메뉴 글자 키움 (데스크톱) */
+  /* ───────── 모바일 (11/14): 3칸 그리드. 맨 위 이름·아티클 박스, 그 아래 제목·본문 한 단(화면 폭), 사진도 화면 폭.
+     옆 목차는 숨김. 이전 글/다음 글은 화면 맨 아래 양 끝에 작게 ───────── */
+  @media (max-width: 700px) {
+    :root { --cell: calc(100vw / 3); --u: calc(100vw / 540); --gut: 14px; --fs-l: 20px; --fs-xl: 26px; --fs-s: 14px; --lh-s: 23px; }
+    .page { grid-template-columns: repeat(3, var(--cell)); }
+    .b-name { grid-column: 1 / span 1; }
+    .b-name .t { font-size: 22px; line-height: 1.15; white-space: normal; word-break: keep-all; right: var(--gut); }   /* 한 칸이라 '폼을 / 보아하니' 두 줄 */
+    .b-name .s { font-size: 11px; line-height: 1.3; }
+    .b-art { grid-column: 2 / span 1; }
+    .box svg { width: 10px; height: 10px; }
+    .head { grid-column: 1 / -1; padding: 36px var(--gut) 4px; }
+    .head h1 { margin-top: 10px; }
+    .head .meta { margin-top: 16px; line-height: 1.5; }
+    .head .dek { margin-top: 4px; }
+    .flow { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr); padding: 0 var(--gut) 120px; }
+    .flow > p, .flow > h2, .flow > .soon, .flow > figure.w4, .flow > figure.w6, .flow > figure.w8 { grid-column: 1 / -1; }
+    .flow > figure { margin: calc(var(--lh-s) * 2) 0; }
+    .flow > figure:first-child { margin-top: var(--lh-s); }
+    .flow > figure:has(+ h2) { margin-top: calc(var(--lh-s) * 2.5); margin-bottom: var(--lh-s); }
+    .flow > h2 { margin: calc(var(--lh-s) * 2.5) 0 calc(var(--lh-s) * .6); }
+    figcaption { font-size: 12px; line-height: 18px; margin-top: 8px; }
+    .toc { display: none; }
+    /* 이전 글 / 다음 글 (11/14): 평소엔 숨어 있다가, 화면을 톡 치면 한 칸 크기로 양옆에서 밀려 나옴. 스크롤하거나 다시 치면 들어감 */
+    .pager .box { width: var(--cell); height: var(--cell); bottom: env(safe-area-inset-bottom); transition: transform .35s var(--ease); }
+    .pager .box.left { transform: translateX(-100%); }
+    .pager .box:not(.left) { transform: translateX(100%); }
+    body.pg-on .pager .box { transform: none; }
+    .pager .box .t { font-size: 14px; }
+    .pager .box .s { font-size: 13px; }
+    .fab, .menu a, .menu button { width: var(--cell) !important; height: 44px !important; padding: 0 var(--gut) !important; font-size: 14px; }
+    .fab svg { width: 18px !important; height: 18px !important; }
+    .menu svg { width: 10px; height: 10px; }
+    .to-top { width: 44px; height: 44px; bottom: calc(16px + env(safe-area-inset-bottom)); }
+    .to-top svg { width: 18px; height: 18px; }
+  }
 </style>
 </head>
 <body>
@@ -619,6 +654,18 @@ onScroll();
 <script>
 /* 11/14: 메뉴의 '폼을 보아하니' → 메인으로 가서 개요가 저절로 열림 (표시만 남기고 이동은 메뉴 덮기가 함) */
 document.addEventListener('click', e => { if (e.target.closest('#menu a:first-child')) { try { sessionStorage.setItem('ov-open', '1'); } catch (_) {} } }, true);
+</script>
+<script>
+/* 11/14 모바일: 이전 글 / 다음 글은 화면을 톡 치면 양옆에서 나오고, 스크롤하거나 다시 치면 들어감 */
+(() => {
+  if (!matchMedia('(max-width: 700px)').matches) return;
+  document.addEventListener('click', e => {
+    if (e.target.closest('a, button, input, .pager, #menu, .dock')) return;   // 링크·메뉴·이전/다음 칸을 누른 건 그대로
+    document.body.classList.toggle('pg-on');
+  });
+  let y = scrollY;
+  addEventListener('scroll', () => { if (Math.abs(scrollY - y) > 6) document.body.classList.remove('pg-on'); y = scrollY; }, { passive: true });
+})();
 </script>
 </body>
 </html>
