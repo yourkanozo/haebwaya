@@ -273,12 +273,12 @@
     .item.done.d-u::after { transform: translateY(-100%); }
   }
   .empty-msg { position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%); margin: 0; padding: 0; color: #fff; opacity: 1; font-size: var(--fs-s); line-height: 1; white-space: nowrap; pointer-events: none; z-index: 3; }   /* 11/14: 결과가 없을 때 — 흰 글씨, 화면 가운데 살짝 위 */
-  .ov-text b { font-weight: 400; }   /* 11/14: 개요 속 '탐색'·'아티클' — 본문(라이트 300)보다 한 단계만 굵게 */
+  .ov-text b { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 500; }   /* 11/14: 개요 속 '탐색'·'아티클'도 '폼을 보아하니'처럼 제목 서체 미디엄 */
   .ov-text b.ov-name { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 500; }   /* '폼을 보아하니'는 제목 서체 미디엄 */
   .ov-text { max-width: 25em; line-height: calc(var(--lh-s) * 1.15); }   /* 11/14: 글 폭은 둘째 문장 한 줄 정도로 좁게, 행간 조금 넓게 */
   .menu a.here { cursor: default; }   /* 11/14: 지금 있는 페이지 메뉴 칸 */
   .menu a:first-child span { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 900; }   /* 11/14: 메뉴 '폼을 보아하니'는 제목 서체 */
-  .menu a:not(:first-child) span { font-weight: 700; }   /* 탐색·아티클은 굵게 */
+  .menu a:not(:first-child) span { font-family: "EASTARJET", "NanumSquare", -apple-system, sans-serif; font-weight: 900; }   /* 11/14: 메뉴 탐색·아티클도 제목 서체로 통일 */
   @media (min-width: 701px) { .menu a span { font-size: var(--fs-l); } }   /* 11/14: 메뉴 글자 키움 (데스크톱) */
 </style>
 <script src="images/colors.js"></script>
