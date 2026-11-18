@@ -84,6 +84,7 @@
      머리글: 1칸 × 1칸 박스 (이름 25 왼쪽 위 / 설명 15 오른쪽 아래) → 아래 키들보다 한 단계 위 */
   .t-b .tags { display: grid; grid-auto-flow: column; grid-template-rows: repeat(var(--rows), calc(var(--cell) / 2)); grid-auto-columns: var(--cell); }
   .t-b .tag.head { grid-column: 1; grid-row: 1 / span 2; }
+  .t-b .panel .tags { grid-auto-flow: row; grid-template-rows: none; grid-auto-rows: calc(var(--cell) / 2); grid-template-columns: repeat(var(--cols), var(--cell)); }   /* 데스크탑 하위태그: 왼→오로 채움 */
   .t-b .tags { overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }   /* 넘치면 줄만 옆으로 */
   .t-b .tags::-webkit-scrollbar { display: none; }
   .t-b .tag.head { position: sticky; left: 0; z-index: 1; }            /* 옆으로 넘겨도 머리글은 왼쪽에 남음 */
@@ -461,11 +462,12 @@ const panel = document.getElementById('panel');
 function buildPanel() {
   const tag = (k, v) => `<button class="tag" data-k="${k}" data-v="${esc(v)}" type="button"><span>${esc(v)}</span><i></i></button>`;
   /* 키는 2개씩 위→아래로 쌓고 오른쪽 열로 (12칸을 넘으면 한 열의 키를 2개씩 늘림 → 판이 칸 단위로 길어짐) */
-  const rowsFor = n => MOBILE ? 4 : 2 * Math.max(1, Math.ceil(n / 24));   // 모바일: 4줄(2칸 높이)로 쌓고 옆으로 넘김
+  const rowsFor = n => MOBILE ? 4 : Math.max(1, Math.ceil(n / 12));   // 모바일: 4줄로 쌓고 옆으로 넘김 / 11/18 데스크탑: 한 줄 12개, 화면 끝까지 채우고 다음 줄로
+  const gridVars = n => `--rows:${rowsFor(n)};--cols:12`;
   panel.dataset.layout = 'fold';
   panel.innerHTML =
-    `<div class="tags verbs" style="--rows:${rowsFor(VERBS.length)}">${VERBS.map(v => tag('verbs', v)).join('')}</div>` +
-    `<div class="tags fields" style="--rows:${rowsFor(FIELDS.length)}">${FIELDS.map(v => tag('field', v)).join('')}</div>`;
+    `<div class="tags verbs" style="${gridVars(VERBS.length)}">${VERBS.map(v => tag('verbs', v)).join('')}</div>` +
+    `<div class="tags fields" style="${gridVars(FIELDS.length)}">${FIELDS.map(v => tag('field', v)).join('')}</div>`;
   [['.tags.verbs', C.verb], ['.tags.fields', C.field]].forEach(([q, c]) => { const g = panel.querySelector(q); setGrp(g, c); [...g.querySelectorAll('.tag')].forEach((t, i) => setTag(t, c, i)); });
   panel.querySelectorAll('.tag[data-k]').forEach(b => b.addEventListener('click', () => {
     const v = b.dataset.v;
@@ -734,6 +736,8 @@ let scrolling = false, scrollIdle, holdReveal = false;
 addEventListener('scroll', () => { scrolling = true; clearTimeout(scrollIdle); scrollIdle = setTimeout(() => { scrolling = false; revealVisible(); }, LAZY_IDLE); }, { passive: true });
 const imgCache = new Map();
 const getImg = src => { if (!imgCache.has(src)) imgCache.set(src, loadImage(src)); return imgCache.get(src); };
+const getThumb = src => getImg(src).then(im => im ? src : null);   // 11/18: 받은 뒤 주소를 돌려줌
+const nearView = el => { if (!el.isConnected) return false; const r = el.getBoundingClientRect(); return r.bottom > -innerHeight * .5 && r.top < innerHeight * 2; };
 const DIRS = ['d-r', 'd-l', 'd-d', 'd-u'];   // 10/22: 다시 네 방향 랜덤 (단색이 오른쪽·왼쪽·아래·위 중 한쪽으로 걷힘)
 const setDir = el => { el.classList.remove(...DIRS); el.classList.add(DIRS[rand(DIRS.length)]); };
 /* 2026-10-17: 화면 밖으로 나간 사진은 다시 단색으로 → 돌아오면 레이지 로드로 다시 스르륵 */
@@ -744,11 +748,12 @@ const outIO = new IntersectionObserver(es => es.forEach(e => {
   el.classList.add('now'); el.classList.remove('done'); el._shown = false; el._q = false;
   requestAnimationFrame(() => el.classList.remove('now'));
 }));
-function showImg(el) { el._shown = true; el.style.setProperty('--img', `url(${el._src})`); setDir(el); void el.offsetWidth; el.classList.add('done'); outIO.observe(el); }
+function showImg(el) { el._shown = true; el.style.setProperty('--img', `url(${el._url || el._src})`); setDir(el); void el.offsetWidth; el.classList.add('done'); outIO.observe(el); }
 const revealQueue = []; let revealing = false;
 function revealVisible() {
   if (scrolling || holdReveal) return;
   items.filter(el => !el._shown && !el._q && !el.classList.contains('gone') && inView(el)).sort(byPos).forEach(el => { el._q = true; revealQueue.push(el); });
+  items.filter(el => !el._shown && !el.classList.contains('gone') && nearView(el)).forEach(el => getThumb(el._src));   // 11/18: 보이는 것 + 바로 아래 한두 화면은 미리 한꺼번에 받아 둠
   if (!revealing) nextReveal();
 }
 function nextReveal() {
@@ -757,7 +762,7 @@ function nextReveal() {
   if (!el) { revealing = false; return; }
   revealing = true; el._q = false;
   if (el._shown || !inView(el)) return nextReveal();
-  getImg(el._src).then(img => { if (!img) { el.classList.add('noimg'); return; } if (!el._shown && !scrolling && !holdReveal && inView(el) && !el.classList.contains('gone')) showImg(el); });
+  getThumb(el._src).then(url => { if (!url) { el.classList.add('noimg'); return; } if (!el._url) el._url = url; if (!el._shown && !scrolling && !holdReveal && inView(el) && !el.classList.contains('gone')) showImg(el); });
   setTimeout(nextReveal, Math.max(12, Math.min(LOAD_STEP, 700 / (revealQueue.length + 1))));
 }
 function cellFor(it) {

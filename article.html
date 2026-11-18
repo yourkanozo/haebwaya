@@ -61,6 +61,12 @@
   .flow > figure.w4 { grid-column: 5 / span 4; }
   .flow > figure.w6 { grid-column: 4 / span 6; }
   .flow > figure.w8 { grid-column: 3 / span 8; }
+  .ph { position: relative; }
+  .ph::after { content: ''; position: absolute; inset: 0; background: var(--solid); clip-path: inset(0); transition: clip-path .6s var(--ease); pointer-events: none; }   /* 11/18: 사진 위 단색 */
+  .ph.done.d-r::after { clip-path: inset(0 0 0 100%); }
+  .ph.done.d-l::after { clip-path: inset(0 100% 0 0); }
+  .ph.done.d-d::after { clip-path: inset(100% 0 0 0); }
+  .ph.done.d-u::after { clip-path: inset(0 0 100% 0); }
   figure img { width: 100%; display: block; aspect-ratio: var(--ar, 4 / 3); object-fit: cover; background: #111; }
   figcaption { font-size: var(--fs-s); line-height: var(--lh-s); opacity: .6; margin-top: calc(var(--u) * 12); text-align: center; }
   .soon { opacity: .6; text-align: center; padding: var(--cell) 0; }
@@ -191,7 +197,8 @@
   <nav class="menu" id="menu"></nav>
 </div>
 <button class="to-top" id="toTop" type="button" aria-label="맨 위로"><svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M11 19V3M4 10l7-7 7 7"/></svg></button>
-<script src="images/colors.js"></script>   <!-- 박스 팔레트용 (2026-11-14) -->
+<script src="images/colors.js"></script>
+<script src="images/articles/colors.js"></script>   <!-- 11/18: 아티클 사진 단색 (직접 고치는 파일) -->   <!-- 박스 팔레트용 (2026-11-14) -->
 <script>
 /* ═════════ 아티클 (목차 페이지 articles.html의 TOC와 번호·제목을 맞출 것) ═════════
    blocks: 위에서부터 차례로
@@ -263,11 +270,12 @@ const toc = [{ id: 'top', label: '들어가며', mark: '—' }];
     if (fi > 0) B.splice(li + 1, 0, ...B.splice(fi, 1));
   }
 }
+const imgColor = src => { const C = window.ARTICLE_IMG_COLORS || {}; return C[src.split('/').pop().replace(/\.\w+$/, '')] || C.DEFAULT || '#2a2622'; };   // 11/18
 const flow = art.blocks.length ? art.blocks.map(b => {
   if (typeof b === 'string') return `<p>${esc(b)}</p>`;
   if (b.lead) return `<p class="lead">${esc(b.lead)}</p>`;
   if (b.h) { secNo++; const id = 's' + secNo; toc.push({ id, label: b.h.split(':')[0], mark: secNo }); return `<h2 id="${id}">${esc(b.h)}${b.en ? `<small>${esc(b.en)}</small>` : ''}</h2>`; }
-  if (b.img) return `<figure class="w${b.w || 8}" style="${b.ar ? `--ar:${b.ar}` : ''}"><img src="${b.img}" alt="${esc(b.cap || '')}" loading="lazy">${b.cap ? `<figcaption>${esc(b.cap)}</figcaption>` : ''}</figure>`;
+  if (b.img) return `<figure class="w${b.w || 8}" style="${b.ar ? `--ar:${b.ar}` : ''}"><div class="ph" style="--solid:${imgColor(b.img)}"><img src="${b.img}" alt="${esc(b.cap || '')}" loading="lazy"></div>${b.cap ? `<figcaption>${esc(b.cap)}</figcaption>` : ''}</figure>`;
   return '';
 }).join('') : '<p class="soon">준비 중인 글이에요.</p>';
 
@@ -282,6 +290,17 @@ document.getElementById('page').innerHTML =
   box('b-art', colors.art, '아티클', `${ARTICLES.length}편`, CONFIG.pages.toc, .09) +
   `<header class="head" id="top"><div class="no">${art.no}</div><h1>${esc(art.title)}</h1><div class="meta">${[art.issue ? `${+art.issue}호 ${art.verb}` : art.verb, art.column, art.date].filter(Boolean).join(' · ')}</div>${art.dek ? `<div class="dek">${esc(art.dek)}</div>` : ''}</header>` +
   tocHtml + `<article class="flow">${flow}</article>` + pager;
+/* 11/18: 아티클 사진도 단색 → 화면에 들어오고 사진이 다 받아지면 단색이 네 방향 중 한쪽으로 걷힘 (메인과 같음) */
+{
+  const D = ['d-r', 'd-l', 'd-d', 'd-u'];
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (!e.isIntersecting) return;
+    const ph = e.target, im = ph.querySelector('img'); io.unobserve(ph);
+    const go = () => { ph.classList.add(D[Math.floor(Math.random() * 4)]); void ph.offsetWidth; ph.classList.add('done'); };
+    if (im.complete && im.naturalWidth) setTimeout(go, 80); else { im.addEventListener('load', go, { once: true }); im.addEventListener('error', go, { once: true }); }
+  }), { rootMargin: '0px 0px -8% 0px' });
+  document.querySelectorAll('.flow .ph').forEach(ph => io.observe(ph));
+}
 { const pb = document.querySelectorAll('.pager .box'); if (prev) pb[0].title = `${prev.no} ${prev.title}`; if (next) pb[1].title = `${next.no} ${next.title}`; }
 
 /* 목차: 누르면 부드럽게 이동, 지금 읽는 소제목 표시 */
